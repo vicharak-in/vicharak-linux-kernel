@@ -28,11 +28,14 @@ __dtbs_install: $(dtbs) $(dtbos) $(readmes) $(subdirs)
 quiet_cmd_dtb_install = INSTALL $@
       cmd_dtb_install = install -D $< $@
 
+quiet_cmd_dtbo_install = INSTALL $@
+      cmd_dtbo_install = install -D $< $@.disabled
+
 $(dst)/%.dtb: $(obj)/%.dtb
 	$(call cmd,dtb_install)
 
-$(dst)/%.dtbo: $(obj)/%.dtbo
-	$(call cmd,dtb_install)
+$(dst)/%.dtbo: $(obj)/%.dtbo.disabled
+	$(call cmd,dtbo_install)
 
 $(dst)/README.rockchip-overlays: $(src)/README.rockchip-overlays
 	$(call cmd,dtb_install)
