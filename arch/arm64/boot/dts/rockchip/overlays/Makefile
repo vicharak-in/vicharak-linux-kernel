@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
-dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
+dtbo-$(CONFIG_BOARD_VICHARAK_VAAMAN) += \
 	rk3399-vaaman-cdn-dp.dtbo \
 	rk3399-vaaman-camera-imx219.dtbo \
 	rk3399-vaaman-camera-ov5647.dtbo \
@@ -14,6 +14,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3399-vaaman-spdif-pin15.dtbo \
 	rk3399-vaaman-spdif-pin32.dtbo \
 	rk3399-vaaman-spi2-jedec-flash.dtbo
+
+dtbo-$(CONFIG_BOARD_VICHARAK_AXON) +=
 
 dtbotxt-$(CONFIG_ARCH_ROCKCHIP) += \
 	README.rockchip-overlays
