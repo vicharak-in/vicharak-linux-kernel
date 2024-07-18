@@ -13,7 +13,8 @@ dtbo-$(CONFIG_BOARD_VICHARAK_VAAMAN) += \
 	rk3399-vaaman-pwm1.dtbo \
 	rk3399-vaaman-spdif-pin15.dtbo \
 	rk3399-vaaman-spdif-pin32.dtbo \
-	rk3399-vaaman-spi2-jedec-flash.dtbo
+	rk3399-vaaman-spi2-jedec-flash.dtbo \
+	rk3399-vaaman-max9867-i2s1-i2c7.dtbo
 
 dtbo-$(CONFIG_BOARD_VICHARAK_AXON) +=
 
