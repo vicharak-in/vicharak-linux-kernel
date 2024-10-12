@@ -290,8 +290,9 @@ if [ ! -d /boot/extlinux ]; then
 fi
 
 # Create an extlinux.conf file
-echo "label ${RK_KERNEL_DTS} linux-${version}" >/boot/extlinux/extlinux.conf
-echo "\tkernel /Image-${version}" >>/boot/extlinux/extlinux.conf
+echo -e "label ${RK_KERNEL_DTS} linux-${version}" >/boot/extlinux/extlinux.conf
+echo -e "\tkernel /Image-${version}" >>/boot/extlinux/extlinux.conf
+echo -e "\tfdt /rk-kernel.dtb" >>/boot/extlinux/extlinux.conf
 
 # Copy the kernel device tree file
 if [ -f "/usr/lib/${packagename}/rockchip/${RK_KERNEL_DTS}.dtb" ]; then
@@ -330,7 +331,7 @@ if [ ! \$(echo \${cmdline} | grep -q "root=") ]; then
 fi
 
 # Append the kernel cmdline to the extlinux.conf
-echo "\tappend \${cmdline}" >>/boot/extlinux/extlinux.conf
+echo -e "\tappend \${cmdline}" >>/boot/extlinux/extlinux.conf
 
 echo "Added new kernel configuration" 2>&1 | tee -a \${log_file}
 
