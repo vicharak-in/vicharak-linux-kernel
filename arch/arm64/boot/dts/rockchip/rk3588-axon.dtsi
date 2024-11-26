@@ -146,12 +146,10 @@
 	leds {
 		compatible = "gpio-leds";
 		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&power_led_gpio &status_led_gpio>;
 
 		power_led: power-led {
 			function = LED_FUNCTION_POWER;
-			gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_HIGH>;
+			gpios = <&pca9554 0 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 			retain-state-suspended;
 			linux,default-trigger = "default-on";
@@ -159,7 +157,7 @@
 
 		status_led: status-led {
 			function = LED_FUNCTION_STATUS;
-			gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
+			gpios = <&pca9554 1 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 			retain-state-suspended;
 			linux,default-trigger = "heartbeat";
@@ -1051,18 +1049,6 @@
 		rtc_int: rtc-int {
 			rockchip,pins =
 				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>;
-		};
-	};
-
-	leds {
-		power_led_gpio: power-led-gpio {
-			rockchip,pins =
-				<0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-
-		status_led_gpio: status-led-gpio {
-			rockchip,pins =
-				<0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
