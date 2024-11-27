@@ -4,7 +4,7 @@
  */
 
 #include "rk3588.dtsi"
-#include "rk3588-rk806-single.dtsi"
+#include "rk3588-axon-rk806-single.dtsi"
 #include <dt-bindings/display/rockchip_vop.h>
 #include <dt-bindings/input/rk-input.h>
 #include <dt-bindings/leds/common.h>
@@ -218,16 +218,16 @@
 		};
 	};
 
-	sata_vcc_3v3: sata-vcc-3v3 {
+	sata_vcc_5v0: sata-vcc-5v0 {
 		compatible = "regulator-fixed";
-		regulator-name = "sata_vcc_3v3";
+		regulator-name = "sata_vcc_5v0";
+		startup-delay-us = <5000>;
 		regulator-boot-on;
 		regulator-always-on;
 		enable-active-high;
-		gpio = <&pca9554 2 GPIO_ACTIVE_HIGH>;
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		vin-supply = <&vcc1_5v0>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vcc12v_dcin>;
 	};
 
 	sdio_pwrseq: sdio-pwrseq {
@@ -245,9 +245,9 @@
 		regulator-name = "vbus5v0_typec0";
 		regulator-boot-on;
 		enable-active-high;
-//		gpio = <&pca9554 4 GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
 		gpio = <&pca9554 6 GPIO_ACTIVE_HIGH>;
-
 		vin-supply = <&vcc1_5v0>;
 	};
 
@@ -256,9 +256,9 @@
 		regulator-name = "vbus5v0_typec1";
 		regulator-boot-on;
 		enable-active-high;
-//		gpio = <&pca9554 6 GPIO_ACTIVE_HIGH>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
 		gpio = <&pca9554 4 GPIO_ACTIVE_HIGH>;
-
 		vin-supply = <&vcc1_5v0>;
 	};
 
@@ -269,6 +269,16 @@
 		regulator-boot-on;
 		regulator-min-microvolt = <12000000>;
 		regulator-max-microvolt = <12000000>;
+	};
+
+	vcc0_4v0: vcc4v0_sys: vcc0-4v0-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc0_4v0";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <4000000>;
+		regulator-max-microvolt = <4000000>;
+		vin-supply = <&vcc12v_dcin>;
 	};
 
 	vcc1_5v0: vcc5v0_sys: vcc1-5v0-regulator {
@@ -299,7 +309,6 @@
 		enable-active-high;
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
-		vin-supply = <&vcc_3v3_s3>;
 	};
 
 	vcc3v3_pcie20_sata30: vcc3v3-pcie20-sata30 {
@@ -308,7 +317,7 @@
 		regulator-boot-on;
 		regulator-always-on;
 		enable-active-high;
-		gpio = <&pca9554 0 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
 		regulator-max-microvolt = <3300000>;
 		regulator-min-microvolt = <3300000>;
 		vin-supply = <&vcc12v_dcin>;
@@ -320,24 +329,24 @@
 		regulator-boot-on;
 		regulator-always-on;
 		enable-active-high;
-		gpio = <&pca9554 1 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_HIGH>;
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		vin-supply = <&vcc12v_dcin>;
 	};
 
-	vcc3v3_usb20: vcc3v3-usb20-regulator {
+	vcc5v0_usb20_host: vcc5v0-usb20-host-regulator {
 		compatible = "regulator-fixed";
-		regulator-name = "vcc3v3_usb20";
+		regulator-name = "vcc5v0_usb20_host";
 		regulator-boot-on;
 		regulator-always-on;
 		enable-active-high;
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		vin-supply = <&vcc_3v3_s0>;
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vcc1_5v0>;
 	};
 
-/*	wireless_bluetooth: wireless-bluetooth {
+	wireless_bluetooth: wireless-bluetooth {
 		compatible = "bluetooth-platdata";
 		clocks = <&hym8563>;
 		clock-names = "ext_clock";
@@ -360,7 +369,7 @@
 		WIFI,host_wake_irq = <&gpio2 RK_PB4 GPIO_ACTIVE_HIGH>;
 		WIFI,poweren_gpio = <&gpio2 RK_PB5 GPIO_ACTIVE_HIGH>;
 		status = "okay";
-	};*/
+	};
 };
 
 &gpio0 {
@@ -599,7 +608,6 @@
 	clock_in_out = "output";
 	phy-handle = <&rgmii_phy>;
 	phy-mode = "rgmii-rxid";
-	phy-supply = <&vcc_3v3_s3>;
 	pinctrl-0 = <&gmac1_rgmii_bus
 				&gmac1_rgmii_clk
 				&gmac1_rx_bus2
@@ -634,6 +642,7 @@
 	status = "okay";
 };
 
+
 &vp0_out_hdmi0 {
 	status = "okay";
 };
@@ -651,6 +660,7 @@
 &hdptxphy_hdmi1 {
 	status = "okay";
 };
+
 
 &vp1_out_hdmi1 {
 	status = "okay";
@@ -684,7 +694,7 @@
 		regulator-name = "vdd_cpu_big0_s0";
 		regulator-ramp-delay = <2300>;
 		rockchip,suspend-voltage-selector = <1>;
-		vin-supply = <&vcc1_5v0>;
+		vin-supply = <&vcc0_4v0>;
 
 		regulator-state-mem {
 			regulator-off-in-suspend;
@@ -702,7 +712,7 @@
 		regulator-name = "vdd_cpu_big1_s0";
 		regulator-ramp-delay = <2300>;
 		rockchip,suspend-voltage-selector = <1>;
-		vin-supply = <&vcc1_5v0>;
+		vin-supply = <&vcc0_4v0>;
 
 		regulator-state-mem {
 			regulator-off-in-suspend;
@@ -755,7 +765,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&usbc0_int>;
 		vbus-supply = <&vbus5v0_typec0>;
-	//	suspend-disable-irq;
 		status = "okay";
 
 		ports {
@@ -849,7 +858,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&usbc1_int>;
 		vbus-supply = <&vbus5v0_typec1>;
-	//	suspend-disable-irq;
 		status = "okay";
 
 		ports {
@@ -1237,8 +1245,6 @@
 	no-sd;
 	no-sdio;
 	non-removable;
-	vmmc-supply = <&vcc_3v3_s3>;
-	vqmmc-supply = <&vcc_1v8_s3>;
 	status = "okay";
 };
 
@@ -1250,9 +1256,6 @@
 	max-frequency = <150000000>;
 	no-mmc;
 	no-sdio;
-	// sd-uhs-sdr104;
-	vmmc-supply = <&vcc_3v3_s3>;
-	vqmmc-supply = <&vcc_1v8_s0>;
 	status = "okay";
 };
 
@@ -1295,6 +1298,7 @@
 };
 
 &u2phy0_otg {
+	rockchip,typec-vbus-det;
 	status = "okay";
 };
 
@@ -1303,6 +1307,7 @@
 };
 
 &u2phy1_otg {
+	rockchip,typec-vbus-det;
 	status = "okay";
 };
 
@@ -1311,7 +1316,7 @@
 };
 
 &u2phy2_host {
-	phy-supply = <&vcc3v3_usb20>;
+	phy-supply = <&vcc5v0_usb20_host>;
 	status = "okay";
 };
 
@@ -1320,7 +1325,7 @@
 };
 
 &u2phy3_host {
-	phy-supply = <&vcc3v3_usb20>;
+	phy-supply = <&vcc5v0_usb20_host>;
 	status = "okay";
 };
 
