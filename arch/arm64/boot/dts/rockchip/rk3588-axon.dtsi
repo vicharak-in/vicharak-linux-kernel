@@ -1325,7 +1325,7 @@
 };
 
 &u2phy3_host {
-	phy-supply = <&vcc3v3_usb20>;
+	phy-supply = <&vcc5v0_usb20_host>;
 	status = "okay";
 };
 
