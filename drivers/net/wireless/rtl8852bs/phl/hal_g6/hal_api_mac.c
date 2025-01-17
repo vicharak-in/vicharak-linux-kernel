@@ -2065,12 +2065,17 @@ rtw_hal_mac_power_switch(struct rtw_phl_com_t *phl_com,
 }
 
 #ifdef DBG_PHL_MAC_REG_RW
+#define HALPHY_BASE_OFFSET 0x10000
+
 bool rtw_hal_mac_reg_chk(struct rtw_hal_com_t *hal_com, u32 addr)
 {
 	struct hal_info_t *hal_info = hal_com->hal_priv;
 	struct mac_ax_adapter *mac = hal_to_mac(hal_info);
 	bool rst = true;
 	u32 mac_rst;
+
+	if (addr & HALPHY_BASE_OFFSET)
+		goto _exit;
 
 	if (mac != NULL && mac->ops->io_chk_access) {
 		mac_rst = mac->ops->io_chk_access(mac, addr);
@@ -2081,7 +2086,7 @@ bool rtw_hal_mac_reg_chk(struct rtw_hal_com_t *hal_com, u32 addr)
 			_os_warn_on(1);
 		}
 	}
-
+_exit:
 	return rst;
 }
 #endif
