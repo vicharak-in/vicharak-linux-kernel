@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (C) 2023 Vicharak Computers LLP
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+	metadata {
+		title = "Enable MAX9867 I2S Controller 1 on 40-Pin GPIO";
+		compatible = "vicharak,rk3399-vaaman", "rockchip,rk3399";
+		category = "misc";
+		exclusive = "i2s1";
+		description = "Enables Max9867 audio codec using I2S1 and I2C7";
+	};
+
+	sound-max9867 {
+	    status = "okay";
+	    compatible = "rockchip,multicodecs-card";
+	    rockchip,card-name = "MAX9867";
+	    rockchip,codec = <&max9867>;
+	    rockchip,cpu = <&i2s1>;
+	    rockchip,format = "i2s";
+	    poll-interval = <100>;
+	};
+};
+
+&i2c7 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	max9867: audio_codec@18 {
+	    #sound-dai-cells = <0>;
+	    compatible = "maxim,max9867";
+	    reg = <0x18>;
+	    status = "okay";
+	};
+};
+
+&i2s1 {
+	status = "okay";
+	rockchip,playback-channels = <2>;
+	rockchip,capture-channels = <2>;
+};

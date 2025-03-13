@@ -180,6 +180,7 @@ Homepage: https://www.kernel.org/
 
 Package: $packagename-$version
 Architecture: $debarch
+Depends: vicharak-config (>= 0.1.7), u-boot-menu (>= 5.0.4)
 Description: Linux kernel, version $version
  This package contains the Linux kernel, modules and corresponding other
  files, version: $version.
