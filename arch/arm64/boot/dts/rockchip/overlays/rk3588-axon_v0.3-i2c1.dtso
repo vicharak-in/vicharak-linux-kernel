@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (C) 2023 Vicharak Computers LLP
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+	metadata {
+		title = "Enable I2C1 on 30-Pin GPIO Header Axon V0.3";
+		compatible = "rockchip,rk3588";
+		category = "misc";
+		exclusive = "GPIO1_D2", "GPIO1_D3";
+		description = "Enable I2C1 on GPIO1_D3 (Pin 19) for SDA and GPIO1_D2 (Pin 20) for SCL.";
+	};
+};
+
+&i2c1 {
+	status = "okay";
+	pinctrl-0 = <&i2c1m4_xfer>;
+};
