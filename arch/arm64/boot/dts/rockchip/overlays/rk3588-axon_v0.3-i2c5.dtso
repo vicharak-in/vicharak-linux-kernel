@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (C) 2023 Vicharak Computers LLP
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+	metadata {
+		title = "Enable I2C5 on 30-Pin GPIO Header Axon V0.3";
+		compatible = "rockchip,rk3588";
+		category = "misc";
+		exclusive = "GPIO2_B6", "GPIO2_B7";
+		description = "Enable I2C5 on GPIO2_B7 (Pin 12) for SDA and GPIO2_B6 (Pin 10) for SCL.";
+	};
+};
+
+&i2c5 {
+	status = "okay";
+	pinctrl-0 = <&i2c5m4_xfer>;
+};

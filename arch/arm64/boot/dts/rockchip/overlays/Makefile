@@ -16,7 +16,17 @@ dtbo-$(CONFIG_BOARD_VICHARAK_VAAMAN) += \
 	rk3399-vaaman-spi2-jedec-flash.dtbo \
 	rk3399-vaaman-max9867-i2s1-i2c7.dtbo
 
-dtbo-$(CONFIG_BOARD_VICHARAK_AXON) +=
+dtbo-$(CONFIG_BOARD_VICHARAK_AXON) += \
+	rk3588-axon_v0.3-uart1.dtbo \
+	rk3588-axon_v0.3-uart4.dtbo \
+	rk3588-axon_v0.3-uart6.dtbo \
+	rk3588-axon_v0.3-pwm0.dtbo \
+	rk3588-axon_v0.3-pwm1-m0.dtbo \
+	rk3588-axon_v0.3-pwm1-m1.dtbo \
+	rk3588-axon_v0.3-i2c1.dtbo \
+	rk3588-axon_v0.3-i2c2.dtbo \
+	rk3588-axon_v0.3-i2c5.dtbo \
+	rk3588-axon_v0.3-i2c7.dtbo
 
 dtbotxt-$(CONFIG_ARCH_ROCKCHIP) += \
 	README.rockchip-overlays

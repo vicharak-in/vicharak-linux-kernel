@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (C) 2023 Vicharak Computers LLP
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+&{/} {
+    metadata {
+        title ="Enable UART1 on 30 Pin GPIO Header Axon V0.3";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+        category = "misc";
+        exclusive = "uart1", "GPIO2_B6", "GPIO2_B7";
+        description = "Enable UART1 on GPIO2_B7 (Pin 12) For Tx and GPIO2_B6 (Pin 10) For Rx";
+    };
+};
+
+&uart1 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&uart1m0_xfer>;
+};
