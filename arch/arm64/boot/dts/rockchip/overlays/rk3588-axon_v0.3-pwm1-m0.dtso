@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (C) 2023 Vicharak Computers LLP
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+&{/} {
+    metadata {
+        title ="Enable PWM1_M0 on 30 Pin GPIO Header Axon V0.3";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+        category = "misc";
+        exclusive = "pwm1", "GPIO0_C0";
+        description = "Enable PWM1_M0 on GPIO0_C0 (Pin 13)";
+    };
+};
+
+&pwm1{
+    status = "okay";
+    pinctrl-names = "active";
+	pinctrl-0 = <&pwm1m0_pins>;
+};
