@@ -1,0 +1,31 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+&{/} {
+    metadata {
+        title ="Enable SPI1 on 30 Pin GPIO Header Axon V0.3";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+        category = "misc";
+        exclusive = "spi1", "GPIO1_D0", "GPIO1_D1", "GPIO1_D2", "GPIO1_D3";
+        description = "Enable SPI1 on GPIO Header\n\t Pin 17: MISO\n\t Pin 18: MOSI\n\t Pin 19: CS\n\t Pin 20: SCLK";
+    };
+};
+
+&spi1 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    pinctrl-names = "default";
+    pinctrl-0 = <&spi1m2_cs0 &spi1m2_pins>;
+    num-cs = <1>;
+	
+    spidev@0 {
+        compatible = "rockchip,spidev";
+        status = "okay";
+        reg = <0>;
+        spi-max-frequency = <50000000>;
+    }; 
+};
