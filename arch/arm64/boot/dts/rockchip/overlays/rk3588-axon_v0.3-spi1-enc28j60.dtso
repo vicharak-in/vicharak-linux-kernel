@@ -1,0 +1,44 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+    metadata {
+        title ="Enable SPI1 Ethernet Controller support on 30 Pin GPIO Header Axon V0.3";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+        category = "misc";
+        exclusive = "spi1", "GPIO1_D0", "GPIO1_D1", "GPIO1_D2", "GPIO1_D3";
+        description = "Enable SPI1 support for ENC28J60 Ethernet Controller with SPI Module on GPIO Header\n\t Pin 17: MISO\n\t Pin 18: MOSI\n\t Pin 19: CS\n\t Pin 20: SCLK\n\t Pin 23: GPIO1_B3 Interrupt Pin";
+    };
+};
+
+&spi1 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    pinctrl-names = "default";
+    pinctrl-0 = <&spi1m2_cs0 &spi1m2_pins>;
+
+    eth1: enc28j60@0 {
+        compatible = "microchip,enc28j60";
+        reg = <0>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&eth0_pins>;
+        interrupt-parent = <&gpio1>;
+        interrupts = <RK_PB3 IRQ_TYPE_EDGE_FALLING>;
+        spi-max-frequency = <12000000>;
+        status = "okay";
+    };
+
+};
+
+&pinctrl {
+    eth-pins {
+	    eth0_pins: eth0-pins {
+	        rockchip,pins = <1 RK_PB3 0 &pcfg_pull_up>;
+        };
+    };
+};
