@@ -1017,17 +1017,17 @@
 };
 
 &pcie2x1l0 {
-	reset-gpios = <&gpio4 RK_PA5 GPIO_ACTIVE_HIGH>;
+	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pcie2_0_rst>;
+	pinctrl-0 = <&pcie2_0_rst &pcie2_0_clkreq &pcie2_0_wake>;
 	rockchip,skip-scan-in-resume;
 	status = "okay";
 };
 
 &pcie2x1l1 {
-	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
+	reset-gpios = <&gpio4 RK_PA5 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pcie2_1_rst>;
+	pinctrl-0 = <&pcie2_1_rst &pcie2_1_clkreq &pcie2_1_wake>;
 	rockchip,skip-scan-in-resume;
 	status = "okay";
 };
@@ -1069,12 +1069,32 @@
 	pcie2 {
 		pcie2_0_rst: pcie2-0-rst {
 			rockchip,pins =
-				<4 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
+				<4 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		pcie2_0_clkreq: pcie2-0-clkreq {
+			rockchip,pins =
+				<4 RK_PA0 4 &pcfg_pull_none>;
+		};
+
+		pcie2_0_wake: pcie2-0-wake {
+			rockchip,pins =
+				<4 RK_PA1 4 &pcfg_pull_none>;
 		};
 
 		pcie2_1_rst: pcie2-1-rst {
 			rockchip,pins =
-				<4 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+				<4 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		pcie2_1_clkreq: pcie2-1-clkreq {
+			rockchip,pins =
+				<4 RK_PA3 4 &pcfg_pull_none>;
+		};
+
+		pcie2_1_wake: pcie2-1-wake {
+			rockchip,pins =
+				<4 RK_PA4 4 &pcfg_pull_none>;
 		};
 	};
 
@@ -1445,15 +1465,6 @@
 			};
 		};
 	};
-};
-
-&usbhost3_0 {
-	status = "okay";
-};
-
-&usbhost_dwc3_0 {
-	dr_mode = "otg";
-	status = "okay";
 };
 
 &usbdrd3_1 {

@@ -1,0 +1,28 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+	metadata {
+		title ="Enable Sata support on Combo PHY 1 on Axon V0.3";
+		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+		category = "misc";
+		exclusive = "combphy1_ps";
+		description = "Enable Sata support on Combo PHY 1 on Axon V0.3 accessible via external flex cable.\n\t - Provides Sata interface supporting maximum speed of 6.0 Gbps.\n\t - Designed for operating Sata-based devices such as SSDs, Optical Drives etc.\n\t - Caution: This will disable support for PCIe 2.0 Lane 0.";
+	};
+};
+
+&combphy1_ps {
+	status = "okay";
+};
+
+&pcie2x1l0 {
+        status = "disabled";
+};
+
+&sata1 {
+        status = "okay";
+};

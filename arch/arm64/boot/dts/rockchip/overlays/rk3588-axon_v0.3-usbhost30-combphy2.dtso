@@ -1,0 +1,36 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+        metadata {
+                title ="Enable USB3.0 support on Combo PHY 2 on Axon V0.3";
+                compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+                category = "misc";
+		exclusive = "combphy2_psu";
+                description = "Enable USB3.0 support on Combo PHY 2 on Axon V0.3 accessible via external flex cable.\n\t - Provides a USB3.0 interface (5 Gbps).\n\t - Designed for connecting USB3.0 based devices such as flash drives, SSDs, webcams, Wi-Fi and ethernet adapters etc.\n\t - Caution: This will disable support for Sata2 and PCIe 2.0 Lane 1.";
+        };
+};
+
+&combphy2_psu {
+        status = "okay";
+};
+
+&sata2 {
+        status = "disabled";
+};
+
+&pcie2x1l1 {
+        status = "disabled";
+};
+
+&usbhost3_0 {
+        status = "okay";
+};
+
+&usbhost_dwc3_0 {
+        status = "okay";
+};
