@@ -42,7 +42,13 @@
 		io-channels = <&saradc 2>;
 		keyup-threshold-microvolt = <1800000>;
 		poll-interval = <100>;
-
+		rockchip,audio-routing =
+			"Headphone", "HPOL",
+			"Headphone", "HPOR",
+			"Speaker", "HPOL",
+			"Speaker", "HPOR",
+			"MIC1", "Main Mic",
+			"MIC2", "Headset Mic";
 		play-pause-key {
 			label = "playpause";
 			linux,code = <164>;
@@ -223,6 +229,11 @@
 		BT,wake_host_irq = <&gpio0 RK_PA4 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
+};
+
+&saradc {
+	vref-supply = <&vcc_1v8>;
+	status = "okay";
 };
 
 &cpu_b0 {
