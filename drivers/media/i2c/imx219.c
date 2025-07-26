@@ -46,11 +46,17 @@
 
 #define IMX219_EXP_LINES_MARGIN	4
 
+#define IMX219_DEFAULT_LINK_FREQ_4LANE	364000000
+
 #define IMX219_NAME			"imx219"
 #define IMX219_LANES  			2
 
 static const s64 link_freq_menu_items[] = {
 	456000000,
+};
+
+static const s64 link_freq_menu_items_lane4[] = {
+	IMX219_DEFAULT_LINK_FREQ_4LANE,
 };
 
 struct imx219_reg {
@@ -67,7 +73,7 @@ struct imx219_mode {
 	const struct imx219_reg *reg_list;
 };
 
-/* MCLK:24MHz  3280x2464  21.2fps   MIPI LANE2 */
+/* MCLK:24MHz  3280x2464  21.2fps*/
 static const struct imx219_reg imx219_init_tab_3280_2464_21fps[] = {
 	{0x30EB, 0x05},		/* Access Code for address over 0x3000 */
 	{0x30EB, 0x0C},		/* Access Code for address over 0x3000 */
@@ -119,7 +125,7 @@ static const struct imx219_reg imx219_init_tab_3280_2464_21fps[] = {
 	{IMX219_TABLE_END, 0x00}
 };
 
-/* MCLK:24MHz  1920x1080  30fps   MIPI LANE2 */
+/* MCLK:24MHz  1920x1080  30fps*/
 static const struct imx219_reg imx219_init_tab_1920_1080_30fps[] = {
 	{0x30EB, 0x05},
 	{0x30EB, 0x0C},
@@ -245,6 +251,7 @@ struct imx219 {
 	const char *module_facing;
 	const char *module_name;
 	const char *len_name;
+	u8 lanes;
 };
 
 static const struct imx219_mode supported_modes[] = {
@@ -354,6 +361,16 @@ static int imx219_s_stream(struct v4l2_subdev *sd, int enable)
 	ret = reg_write_table(client, priv->cur_mode->reg_list);
 	if (ret)
 		return ret;
+
+	/* Lane configuration */
+	if (priv->lanes == 4) {
+		ret = reg_write(client, 0x0114, 0x03); /* CSI_LANE_MODE[1:0] */
+		ret |= reg_write(client, 0x0307, 0x58); /* PLL_VT_MPY[7:0] */
+		ret |= reg_write(client, 0x030D, 0x5B); /* PLL_OP_MPY[7:0] */
+
+		if (ret)
+			return ret;
+	}
 
 	/* Handle crop */
 	ret = reg_write(client, 0x0164, priv->crop_rect.left >> 8);
@@ -807,11 +824,11 @@ static long imx219_compat_ioctl32(struct v4l2_subdev *sd,
 static int imx219_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 				struct v4l2_mbus_config *config)
 {
-	//struct i2c_client *client = v4l2_get_subdevdata(sd);
-	//struct imx219 *imx219 = to_imx219(client);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct imx219 *imx219 = to_imx219(client);
 
 	config->type = V4L2_MBUS_CSI2_DPHY;
-	config->bus.mipi_csi2.num_data_lanes = IMX219_LANES;
+	config->bus.mipi_csi2.num_data_lanes = imx219->lanes;
 
 	return 0;
 }
@@ -947,7 +964,11 @@ static int imx219_ctrls_init(struct v4l2_subdev *sd)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx219 *priv = to_imx219(client);
+	struct v4l2_fwnode_endpoint ep_cfg = {
+		.bus_type = V4L2_MBUS_CSI2_DPHY
+	};
 	const struct imx219_mode *mode = priv->cur_mode;
+	struct fwnode_handle *endpoint;
 	s64 pixel_rate, h_blank, v_blank;
 	int ret;
 	u32 fps = 0;
@@ -957,6 +978,24 @@ static int imx219_ctrls_init(struct v4l2_subdev *sd)
 			  V4L2_CID_HFLIP, 0, 1, 1, 0);
 	v4l2_ctrl_new_std(&priv->ctrl_handler, &imx219_ctrl_ops,
 			  V4L2_CID_VFLIP, 0, 1, 1, 0);
+
+	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(&client->dev), NULL);
+	if (!endpoint)
+		return dev_err_probe(&client->dev, -EINVAL, "endpoint node not found\n");
+
+	if (v4l2_fwnode_endpoint_alloc_parse(endpoint, &ep_cfg)) {
+		dev_err_probe(&client->dev, -EINVAL, "could not parse endpoint\n");
+		goto error;
+	}
+
+	/* Check the number of MIPI CSI2 data lanes */
+	if (ep_cfg.bus.mipi_csi2.num_data_lanes != 2 &&
+	    ep_cfg.bus.mipi_csi2.num_data_lanes != 4) {
+		dev_err_probe(&client->dev, -EINVAL,
+			      "only 2 or 4 data lanes are currently supported\n");
+		goto error;
+	}
+	priv->lanes = ep_cfg.bus.mipi_csi2.num_data_lanes;
 
 	/* exposure */
 	v4l2_ctrl_new_std(&priv->ctrl_handler, &imx219_ctrl_ops,
@@ -984,8 +1023,10 @@ static int imx219_ctrls_init(struct v4l2_subdev *sd)
 			  v_blank, v_blank, 1, v_blank);
 
 	/* freq */
-	v4l2_ctrl_new_int_menu(&priv->ctrl_handler, NULL, V4L2_CID_LINK_FREQ,
-			       0, 0, link_freq_menu_items);
+	v4l2_ctrl_new_int_menu(&priv->ctrl_handler, NULL, V4L2_CID_LINK_FREQ, 0, 0,
+			(priv->lanes == 2) ? link_freq_menu_items
+			: link_freq_menu_items_lane4);
+
 	fps = DIV_ROUND_CLOSEST(mode->max_fps.denominator,
 		mode->max_fps.numerator);
 	pixel_rate = mode->vts_def * mode->hts_def * fps;
