@@ -1,0 +1,23 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+        metadata {
+                title ="Disable RTL8852BS WiFi 6 support on Axon V0.3";
+                compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+                category = "misc";
+                description = "This overlay disables Wi-Fi 6 functionality on Axon for applications requiring higher security by preventing wireless communication interfaces from initializing.\n";
+        };
+};
+
+&wireless_wlan {
+	status = "disabled";
+};
+
+&sdio {
+	status = "disabled";
+};
