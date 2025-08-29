@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0+
-// Copyright (C) 2023 Vicharak Computers LLP
+// Copyright (C) 2025 Vicharak Computers Pvt. Ltd.
 
 /dts-v1/;
 /plugin/;
@@ -10,7 +10,8 @@
 		compatible = "rockchip,rk3588";
 		category = "misc";
 		exclusive = "GPIO2_B6", "GPIO2_B7";
-		description = "Enable I2C5 on GPIO2_B7 (Pin 12) for SDA and GPIO2_B6 (Pin 10) for SCL.";
+		description = "Enable I2C5 on GPIO2_B7 (Pin 12) for SDA and GPIO2_B6 (Pin 10) for SCL.
+\t\tThis configuration makes MIPI_DPHY RX1 and TX1 unavailable.";
 	};
 };
 
