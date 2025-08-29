@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0+
-// Copyright (C) 2023 Vicharak Computers LLP
+// Copyright (C) 2025 Vicharak Computers Pvt. Ltd.
 
 /dts-v1/;
 /plugin/;
@@ -10,7 +10,8 @@
 		compatible = "rockchip,rk3588";
 		category = "misc";
 		exclusive = "GPIO1_D2", "GPIO1_D3";
-		description = "Enable I2C1 on GPIO1_D3 (Pin 19) for SDA and GPIO1_D2 (Pin 20) for SCL.";
+		description = "Enable I2C1 on GPIO1_D3 (Pin 19) for SDA and GPIO1_D2 (Pin 20) for SCL.
+\t\tIt uses the I2C1_M4 multiplexing mode, making MIPI CSI0, NPU and Type-C0/DP unavailable.";
 	};
 };
 
