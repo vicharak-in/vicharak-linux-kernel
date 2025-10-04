@@ -30,6 +30,7 @@ dtbo-$(CONFIG_BOARD_VICHARAK_AXON) += \
 	rk3588-axon_v0.3-i2c7.dtbo \
 	rk3588-axon_v0.3-spi1.dtbo \
 	rk3588-axon_v0.3-spi1-enc28j60.dtbo \
+	rk3588-axon_v0.3-spi1-mcp2515.dtbo \
 	rk3588-axon_v0.3-usbhost30-combphy2.dtbo \
 	rk3588-axon_v0.3-sata1-combphy1.dtbo \
 	rk3588-axon_v0.3-sata2-combphy2.dtbo \

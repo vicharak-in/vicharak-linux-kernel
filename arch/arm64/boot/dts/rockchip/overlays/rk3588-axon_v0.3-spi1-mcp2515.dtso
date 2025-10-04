@@ -1,0 +1,54 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+    metadata {
+        title ="Enable SPI1 MCP2515 (CAN) support on 30 Pin GPIO Header Axon V0.3";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+        category = "misc";
+        exclusive = "spi1", "GPIO1_D0", "GPIO1_D1", "GPIO1_D2", "GPIO1_D3",
+				"GPIO1_B3";
+        description = "Enable SPI1 support for MCP2515 CAN Controller with SPI Module on GPIO Header\n\t Pin 17: MISO\n\t Pin 18: MOSI\n\t Pin 19: CS\n\t Pin 20: SCLK\n\t Pin 23: GPIO1_B3 Interrupt Pin";
+    };
+
+	can_mcp2515_osc: can-mcp2515-osc {
+		status = "okay";
+		compatible = "fixed-clock";
+		clock-frequency = <12000000>;
+		#clock-cells = <0>;
+	};
+};
+
+&spi1 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+    pinctrl-names = "default";
+    pinctrl-0 = <&spi1m2_cs0 &spi1m2_pins>;
+
+	can_mcp2515: can-mcp2515@0 {
+		status = "okay";
+		compatible = "microchip,mcp2515";
+		reg = <0>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <RK_PB3 IRQ_TYPE_EDGE_FALLING>;
+		spi-max-frequency = <10000000>;
+		clocks = <&can_mcp2515_osc>;
+		vdd-supply = <&vcc_3v3_s3>;
+		xceiver-supply = <&vcc_3v3_s3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&mcp2515_int_pin>;
+	};
+};
+
+&pinctrl {
+	mcp2515_int_pin {
+		mcp2515_int_pin: mcp2515_int_pin {
+			rockchip,pins = <1 RK_PB3 0 &pcfg_pull_none>;
+		};
+	};
+};
