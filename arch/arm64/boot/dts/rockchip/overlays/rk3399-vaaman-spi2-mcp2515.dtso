@@ -1,0 +1,53 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+    metadata {
+        title ="Enable SPI2 MCP2515 (CAN) support on 40 Pin GPIO Header";
+        compatible = "vicharak,rk3399-axon", "rockchip,rk3399";
+        category = "misc";
+        exclusive = "spi2", "GPIO2_B1", "GPIO2_B2", "GPIO2_B3", "GPIO2_B4",
+				"GPIO4_D6";
+        description = "Enable MCP2515 on SPI2 with 12 MHz Crystal Oscillator.
+INT=37";
+    };
+
+	can_mcp2515_osc: can-mcp2515-osc {
+		status = "okay";
+		compatible = "fixed-clock";
+		clock-frequency = <12000000>;
+		#clock-cells = <0>;
+	};
+};
+
+&pinctrl {
+	mcp2515_int_pin {
+		mcp2515_int_pin: mcp2515_int_pin {
+			rockchip,pins = <4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+};
+
+&spi2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	can_mcp2515: can-mcp2515@0 {
+		status = "okay";
+		compatible = "microchip,mcp2515";
+		reg = <0>;
+		interrupt-parent = <&gpio4>;
+		interrupts = <RK_PD6 IRQ_TYPE_EDGE_FALLING>;
+		spi-max-frequency = <10000000>;
+		clocks = <&can_mcp2515_osc>;
+		vdd-supply = <&vcc3v3_sys>;
+		xceiver-supply = <&vcc3v3_sys>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&mcp2515_int_pin>;
+	};
+};
