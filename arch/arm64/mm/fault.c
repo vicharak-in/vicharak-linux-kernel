@@ -681,8 +681,10 @@ static int do_alignment_fault(unsigned long far, unsigned long esr,
 	if (!alignment_fixup_helper(far, esr, regs))
 		return 0;
 #endif
-	if (IS_ENABLED(CONFIG_COMPAT_ALIGNMENT_FIXUPS) &&
-	    compat_user_mode(regs))
+	if (!compat_user_mode(regs)) {
+		if (IS_ENABLED(CONFIG_ARM64_ALIGNMENT_FIXUPS))
+			return do_alignment_fixup(far, esr, regs);
+	} else if (IS_ENABLED(CONFIG_COMPAT_ALIGNMENT_FIXUPS))
 		return do_compat_alignment_fixup(far, regs);
 	do_bad_area(far, esr, regs);
 	return 0;
