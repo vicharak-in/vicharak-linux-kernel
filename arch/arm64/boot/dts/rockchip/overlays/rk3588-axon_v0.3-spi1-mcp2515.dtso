@@ -18,7 +18,7 @@
 	can_mcp2515_osc: can-mcp2515-osc {
 		status = "okay";
 		compatible = "fixed-clock";
-		clock-frequency = <12000000>;
+		clock-frequency = <8000000>;
 		#clock-cells = <0>;
 	};
 };
@@ -36,7 +36,7 @@
 		reg = <0>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <RK_PB3 IRQ_TYPE_EDGE_FALLING>;
-		spi-max-frequency = <10000000>;
+		spi-max-frequency = <8000000>;
 		clocks = <&can_mcp2515_osc>;
 		vdd-supply = <&vcc_3v3_s3>;
 		xceiver-supply = <&vcc_3v3_s3>;
@@ -48,7 +48,7 @@
 &pinctrl {
 	mcp2515_int_pin {
 		mcp2515_int_pin: mcp2515_int_pin {
-			rockchip,pins = <1 RK_PB3 0 &pcfg_pull_none>;
+			rockchip,pins = <1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };
