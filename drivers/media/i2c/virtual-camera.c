@@ -20,7 +20,6 @@
 #define PROP_HEIGHT "height"
 #define PROP_BUSFMT "bus-format"
 #define VCAM_VTS_MAX 0x7fff
-#define VCAM_LANES 4
 
 struct output_mode {
 	u32 width;
@@ -51,6 +50,7 @@ struct virtual_camera {
 
 	const struct output_mode *cur_mode;
 	int fmt_code;
+	int lanes;
 	s64 link_frequency;
 };
 
@@ -359,7 +359,7 @@ static int vcamera_set_fmt(struct v4l2_subdev *sd,
 		__v4l2_ctrl_s_ctrl(vcam->vblank, vblank_def);
 		__v4l2_ctrl_s_ctrl(vcam->link_freq, vcam->link_frequency);
 		bpp = vcamera_get_bpp_from_fmtcode(vcam->fmt_code);
-		pixel_rate = vcam->link_frequency * 2 * VCAM_LANES / bpp;
+		pixel_rate = vcam->link_frequency * 2 * vcam->lanes / bpp;
 		__v4l2_ctrl_s_ctrl(vcam->pixel_rate, pixel_rate);
 
 		if (vcam->streaming) {
@@ -480,8 +480,10 @@ static int vcamera_g_frame_interval(struct v4l2_subdev *sd,
 static int vcamera_get_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 				 struct v4l2_mbus_config *cfg)
 {
+	struct virtual_camera *vcam = to_virtual_camera(sd);
+
 	cfg->type = V4L2_MBUS_CSI2_DPHY;
-	cfg->bus.mipi_csi2.num_data_lanes = 4;
+	cfg->bus.mipi_csi2.num_data_lanes = vcam->lanes;
 
 	return 0;
 }
@@ -559,7 +561,7 @@ static int vcamera_initialize_controls(struct virtual_camera *vcam)
 		ARRAY_SIZE(link_freq_menu_items) - 1, 0, link_freq_menu_items);
 
 	bpp = vcamera_get_bpp_from_fmtcode(vcam->fmt_code);
-	pixel_rate = vcam->link_frequency * 2 * VCAM_LANES / bpp;
+	pixel_rate = vcam->link_frequency * 2 * vcam->lanes / bpp;
 	vcam->pixel_rate = v4l2_ctrl_new_std(handler, &vcamera_ctrl_ops,
 					     V4L2_CID_PIXEL_RATE, 0, pixel_rate,
 					     1, pixel_rate);
@@ -607,7 +609,9 @@ static int vcamera_get_pdata(struct i2c_client *client,
 	struct v4l2_fwnode_endpoint bus_cfg;
 	struct device_node *np = client->dev.of_node;
 	struct device_node *endpoint;
+	struct fwnode_handle *fwnode;
 	u32 val;
+	int num_lanes;
 	int ret;
 
 	if (!IS_ENABLED(CONFIG_OF) || !np)
@@ -626,10 +630,19 @@ static int vcamera_get_pdata(struct i2c_client *client,
 	if (!endpoint)
 		return -ENODEV;
 
-	ret = v4l2_fwnode_endpoint_alloc_parse(of_fwnode_handle(endpoint),
-					       &bus_cfg);
+	fwnode = of_fwnode_handle(endpoint);
+
+	ret = v4l2_fwnode_endpoint_alloc_parse(fwnode, &bus_cfg);
 	if (ret)
 		goto done;
+
+	num_lanes = fwnode_property_read_u32_array(fwnode, "data-lanes", NULL, 0);
+	if (num_lanes <= 0) {
+		dev_warn(&client->dev, " data-lanes property not found\n");
+		goto done;
+	}
+
+	vcam->lanes = num_lanes;
 
 	if (!bus_cfg.nr_of_link_frequencies) {
 		dev_info(&client->dev,
