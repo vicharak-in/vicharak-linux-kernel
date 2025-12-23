@@ -24,7 +24,6 @@
 ** header file through which device can communicate and generated
 */
 #include <linux/peripheral.h>
-// #include "include/peripheral.h"
 
 #define DRIVER_NAME "periplex-gpio"
 
@@ -38,7 +37,7 @@ MODULE_PARM_DESC(debug, "Enable or disable debug mode");
     do                                   \
     {                                    \
         if (debug)                       \
-            pr_info(fmt, ##__VA_ARGS__); \
+            pr_info("periplex_gpio: "fmt, ##__VA_ARGS__); \
     } while (0)
 
 /*
@@ -73,10 +72,10 @@ struct periplex_gpio
 
 static int periplex_gpio_write(struct gpio_chip *gpio, u8 value)
 {
-    char buffer[2];
+    char buffer[2] = {0};
     struct periplex_gpio *chip = gpiochip_get_data(gpio);
     int periplex_id = chip->peri_id;
-    pr_info("write value is %u\n", value);
+    pr_info("periplex_gpio: write value is %u\n", value);
     buffer[0] = value;
     buffer[1] = '\0';
     set_periplex_data(periplex_id, 1, buffer);
@@ -87,24 +86,43 @@ char read_data_gpio;
 
 int read_data_for_gpio(struct periplex_device *pdev, char *message, const int len)
 {
-    int pins, i;
-    unsigned int bitmask;
-    unsigned long flags;
-    struct periplex_gpio *gpio = periplex_get_drvdata(pdev);
-    read_data_gpio = message[0];
-    bitmask = 0x01;
+    int pins = 0;
+    int i = 0;
+    unsigned int bitmask = 0x01;
+    unsigned long flags = 0;
+    struct periplex_gpio *gpio = NULL;
 
+    if (!pdev || !message || len <= 0)
+    {
+        pr_err("periplex_gpio: Invalid parameters\n");
+        return -EINVAL;
+    }
+
+    // Get driver data
+    gpio = periplex_get_drvdata(pdev);
+    if (!gpio)
+    {
+        pr_err("periplex_gpio: Failed to get GPIO driver data\n");
+        return -ENODEV;
+    }
+
+    // Read GPIO data
+    read_data_gpio = message[0];
+
+    // Check for interrupt pins
     pins = (message[0] & gpio->interrupt_pins);
     if (pins > 0)
     {
+        // Loop through all 8 bits
         for (i = 0; i < 8; i++)
         {
             if (pins & bitmask)
             {
+                // Disable interrupts and handle IRQ
                 local_irq_save(flags);
                 generic_handle_irq(irq_find_mapping(gpio->chip.irq.domain, i));
                 local_irq_restore(flags);
-                pr_info("the offset is %d\n", i);
+                pr_info("periplex_gpio: the offset is %d\n", i);
                 break;
             }
             bitmask <<= 1;
@@ -123,7 +141,7 @@ static int periplex_gpio_read(struct gpio_chip *gpio, u8 *value)
     wait_event_interruptible(wait_queue_gpio_ioctl, wait_queue_flag_com_gpio != 0);
 
     *value = read_data_gpio;
-    pr_info("read value is %d\n", *value);
+    pr_info("periplex_gpio: read value is %d\n", *value);
     return 0;
 }
 
@@ -131,7 +149,7 @@ static int periplex_gpio_direction_input(struct gpio_chip *chip, unsigned offset
 {
     struct periplex_gpio *gpio = gpiochip_get_data(chip);
     int periplex_id = gpio->peri_id;
-    pr_info("IN offset : %d\n", offset);
+    pr_info("periplex_gpio: IN offset : %d\n", offset);
 
     if ((gpio->in_out_pins & (1 << offset)) != 0)
     {
@@ -148,7 +166,7 @@ static int periplex_gpio_direction_output(struct gpio_chip *chip, unsigned offse
 {
     struct periplex_gpio *gpio = gpiochip_get_data(chip);
     int periplex_id = gpio->peri_id;
-    pr_info("OUT offset : %d\n", offset);
+    pr_info("periplex_gpio: OUT offset : %d\n", offset);
 
     gpio->in_out_pins = gpio->in_out_pins | (1 << offset);
 
@@ -162,8 +180,8 @@ static int periplex_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
     struct periplex_gpio *gpio = gpiochip_get_data(chip);
     u8 buffer = 0;
-    int ret;
-    pr_info("gpio get\n");
+    int ret = 0;
+    pr_info("periplex_gpio: gpio get\n");
 
     periplex_gpio_write(&gpio->chip, gpio->out);
     ret = periplex_gpio_read(&gpio->chip, &buffer);
@@ -176,9 +194,9 @@ static int periplex_gpio_get(struct gpio_chip *chip, unsigned offset)
 static void periplex_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
     struct periplex_gpio *gpio = gpiochip_get_data(chip);
-    u8 buffer;
-    int ret;
-    pr_info("gpio set\n");
+    u8 buffer = 0;
+    int ret = 0;
+    pr_info("periplex_gpio: gpio set\n");
 
     mutex_lock(&gpio->lock);
 
@@ -221,7 +239,7 @@ static int periplex_gpio_irq_set_type(struct irq_data *data, unsigned int flow_t
 
     if (data->hwirq >= 8)
     {
-        pr_err("Invalid hwirq: %lu\n", data->hwirq);
+        pr_err("periplex_gpio: Invalid hwirq: %lu\n", data->hwirq);
         return -EINVAL;
     }
 
@@ -246,7 +264,7 @@ static int periplex_gpio_irq_set_type(struct irq_data *data, unsigned int flow_t
         return -EINVAL;
     }
 
-    pr_info("flow type in irq_set_type %u\n", flow_type);
+    pr_info("periplex_gpio: flow type in irq_set_type %u\n", flow_type);
 
     return 0;
 }
@@ -268,7 +286,9 @@ static void periplex_gpio_irq_clr_mask(struct irq_data *data)
 
 static void periplex_gpio_irq_enable(struct irq_data *data)
 {
-    int configuration, rising_falling, irq_number;
+    int configuration = 0;
+    int rising_falling = 0;
+    int irq_number = 0;
     struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
     struct periplex_gpio *gpio = gpiochip_get_data(gc);
     struct periplex_gpio_irq_line *irq_line = &gpio->irq_lines[data->hwirq];
@@ -276,7 +296,7 @@ static void periplex_gpio_irq_enable(struct irq_data *data)
 
     if (data->hwirq >= 8)
     {
-        pr_err("Invalid hwirq: %lu\n", data->hwirq);
+        pr_err("periplex_gpio: Invalid hwirq: %lu\n", data->hwirq);
         return;
     }
     GPIO_DEBUG("irq_enable\n");
@@ -314,7 +334,9 @@ static void periplex_gpio_irq_enable(struct irq_data *data)
 
 static void periplex_gpio_irq_disable(struct irq_data *data)
 {
-    int configuration, rising_falling, irq_number;
+    int configuration = 0;
+    int rising_falling = 0;
+    int irq_number = 0;
     struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
     struct periplex_gpio *gpio = gpiochip_get_data(gc);
     int periplex_id = gpio->peri_id;
@@ -349,12 +371,12 @@ static int periplex_gpio_to_irq(struct gpio_chip *gc, unsigned int offset)
 
 static int periplex_gpio_probe(struct periplex_device *pdev)
 {
-    int ret;
-    int periplex_id;
+    int ret = 0;
+    int periplex_id = 0;
     struct device *dev = &pdev->dev;
     struct device_node *np = dev->of_node;
-    struct periplex_gpio *gpio;
-    struct gpio_irq_chip *girq;
+    struct periplex_gpio *gpio = NULL;
+    struct gpio_irq_chip *girq = NULL;
 
     // Allocate memory for the periplex GPIO structure
     gpio = kzalloc(sizeof(struct periplex_gpio), GFP_KERNEL);
@@ -400,14 +422,14 @@ static int periplex_gpio_probe(struct periplex_device *pdev)
     gpio->irq_domain = irq_domain_add_linear(np, 8, &irq_domain_simple_ops, gpio);
     if (!gpio->irq_domain)
     {
-        pr_err("Failed to allocate IRQ domain\n");
+        pr_err("periplex_gpio: Failed to allocate IRQ domain\n");
         ret = -ENOMEM;
         goto err_free_gpio;
     }
 
     if (gpio->irq_domain)
     {
-        pr_info("Allocate IRQ domain for %d\n", periplex_id);
+        pr_info("periplex_gpio: Allocate IRQ domain for %d\n", periplex_id);
     }
 
     // GPIO chip setup
@@ -454,7 +476,7 @@ static int periplex_gpio_probe(struct periplex_device *pdev)
         goto err_remove_irq_domain;
     }
 
-    pr_info("GPIO driver is inserted successfully...%d\n", gpio->chip.base);
+    pr_info("periplex_gpio: GPIO driver is inserted successfully...%d\n", gpio->chip.base);
     return 0;
 
 err_remove_irq_domain:
@@ -487,7 +509,7 @@ static int periplex_gpio_remove(struct periplex_device *pdev)
     kfree(gpio->irq_lines);
     kfree(gpio);
 
-    pr_info("GPIO driver is removed successfully\n");
+    pr_info("periplex_gpio: GPIO driver is removed successfully\n");
     return 0;
 }
 
@@ -509,5 +531,5 @@ module_periplex_driver(periplex_gpio_driver);
 
 MODULE_ALIAS("periplex:gpio");
 MODULE_AUTHOR("vatsal kevadiya <vhkeavdiya15@gamil.com>");
-MODULE_DESCRIPTION("GPIO Device Driver with read/write operations");
+MODULE_DESCRIPTION("GPIO Driver for the Periplex");
 MODULE_LICENSE("GPL");
