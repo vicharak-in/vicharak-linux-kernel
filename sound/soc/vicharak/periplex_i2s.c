@@ -1,3 +1,13 @@
+/*
+** Significant of i2s.c file :
+** 1. Make multiple I2S devices with the use of DTSO and create the
+**    card* series into the /sys/class/sound or /proc/asound directory.
+** 2. Implements a Periplex I2S codec driver that can handle playback and capture
+**    for multiple channels and sample formats.
+** 3. Uses ALSA ASoC framework to register a component and DAI driver.
+** 4. Implements an audio queue and workqueue system to buffer and process PCM data
+**    in a non-blocking manner.
+*/
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -23,7 +33,6 @@
 ** header file through which device can communicate and generated
 */
 #include <linux/peripheral.h>
-// #include "include/peripheral.h"
 
 #define DRIVER_NAME "periplex-i2s"
 
@@ -40,7 +49,7 @@ struct mutex i2s_mutex;
     do                                                    \
     {                                                     \
         if (debug)                                        \
-            pr_info("PERIPLEX_I2S: " fmt, ##__VA_ARGS__); \
+            pr_info("periplex_i2s: " fmt, ##__VA_ARGS__); \
     } while (0)
 
 static const char *format_names[] = {
@@ -336,7 +345,7 @@ static void periplex_audio_work_func(struct work_struct *work)
     work_buffer = kzalloc(MAX_CHUNK_SIZE, GFP_KERNEL);
     if (!work_buffer)
     {
-        I2S_DEBUG("Failed to allocate work buffer\n");
+        pr_err("periplex_i2s: Failed to allocate work buffer\n");
         atomic_set(&i2s->work_pending, 0);
         return;
     }
@@ -383,7 +392,7 @@ static int periplex_pcm_open(struct snd_soc_component *component,
     struct snd_pcm_runtime *runtime = substream->runtime;
     runtime->hw = periplex_pcm_hardware;
     snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
-    pr_info("periplex_pcm_open\n");
+    pr_info("periplex_i2s: periplex_pcm_open\n");
     return 0;
 }
 
@@ -398,7 +407,7 @@ static int periplex_pcm_close(struct snd_soc_component *component,
         flush_workqueue(i2s->audio_wq);
     }
 
-    pr_info("periplex_pcm_close\n");
+    pr_info("periplex_i2s: periplex_pcm_close\n");
     return 0;
 }
 
@@ -775,7 +784,7 @@ static int periplex_audio_queue_init(struct periplex_i2s_dev *i2s)
     ret = audio_queue_init(&i2s->queue, AUDIO_QUEUE_SIZE);
     if (ret)
     {
-        I2S_DEBUG("Failed to initialize audio queue: %d\n", ret);
+        pr_err("periplex_i2s: Failed to initialize audio queue: %d\n", ret);
         return ret;
     }
 
@@ -783,7 +792,7 @@ static int periplex_audio_queue_init(struct periplex_i2s_dev *i2s)
     i2s->audio_wq = create_singlethread_workqueue("periplex_audio_wq");
     if (!i2s->audio_wq)
     {
-        I2S_DEBUG("Failed to create audio work queue\n");
+        pr_err("periplex_i2s: Failed to create audio work queue\n");
         audio_queue_cleanup(&i2s->queue);
         return -ENOMEM;
     }
@@ -963,7 +972,7 @@ static int periplex_i2s_probe(struct periplex_device *pdev)
         return ret;
     }
 
-    I2S_DEBUG("Periplex I2S driver probed successfully\n");
+    pr_info("periplex_i2s: probed I2S driver successfully\n");
     return 0;
 }
 
@@ -975,7 +984,7 @@ static int periplex_i2s_remove(struct periplex_device *pdev)
     if (i2s)
     {
         periplex_unlink_device(pdev);
-        I2S_DEBUG("Removing Periplex I2S driver\n");
+        pr_info("periplex_i2s: Removing Periplex I2S driver\n");
     }
 
     return 0;
@@ -997,6 +1006,7 @@ static struct periplex_driver periplex_i2s_driver = {
 };
 module_periplex_driver(periplex_i2s_driver);
 
-MODULE_AUTHOR("vatsalkevadiya <vhkevadiya15@gmail.com>");
-MODULE_DESCRIPTION("Periplex I2S Driver");
+MODULE_ALIAS("periplex:i2s");
+MODULE_AUTHOR("Vatsal Kevadiya <vhkevadiya15@gmail.com>");
+MODULE_DESCRIPTION("I2S Driver for the Periplex");
 MODULE_LICENSE("GPL");
