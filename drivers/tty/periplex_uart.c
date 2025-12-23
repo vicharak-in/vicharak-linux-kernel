@@ -22,7 +22,6 @@
 ** header file through which device can communicate and generated
 */
 #include <linux/peripheral.h>
-// #include "include/peripheral.h"
 
 #define DRIVER_NAME "periplex-uart"
 
@@ -36,8 +35,72 @@ MODULE_PARM_DESC(debug, "Enable or disable debug mode");
     do                                   \
     {                                    \
         if (debug)                       \
-            pr_info(fmt, ##__VA_ARGS__); \
+            pr_info("periplex_uart: "fmt, ##__VA_ARGS__); \
     } while (0)
+
+/* UART Configuration Structure */
+struct uart_config
+{
+    int baud_rate;
+    int data_bits;
+    int parity;    /* 0=none, 1=odd, 2=even */
+    int stop_bits; /* 1 or 2 */
+};
+
+/*
+** Helper function to get data width from termios
+*/
+static int get_data_width(struct ktermios *termios)
+{
+    switch (termios->c_cflag & CSIZE)
+    {
+    case CS5:
+        return 5;
+    case CS6:
+        return 6;
+    case CS7:
+        return 7;
+    case CS8:
+        return 8;
+    default:
+        return 8; /* Default to 8 bits */
+    }
+}
+
+/*
+** Helper function to get parity from termios
+*/
+static int get_parity_type(struct ktermios *termios)
+{
+    if (!(termios->c_cflag & PARENB))
+    {
+        return 0; /* No parity */
+    }
+    else if (termios->c_cflag & PARODD)
+    {
+        return 2; /* Odd parity */
+    }
+    else
+    {
+        return 1; /* Even parity */
+    }
+}
+
+/*
+** Helper function to get stop bits from termios
+*/
+static int get_stop_bits(struct ktermios *termios)
+{
+    return (termios->c_cflag & CSTOPB) ? 2 : 1;
+}
+
+/*
+** Helper function to get baud rate from termios
+*/
+static int get_baud_rate(struct ktermios *termios)
+{
+    return (int)tty_termios_baud_rate(termios);
+}
 
 /*
 ** this functions is used in read for uart
@@ -46,33 +109,35 @@ int read_data_for_uart(struct periplex_device *pdev, char *message, const int le
 {
     struct tty_driver *uart_driver = periplex_get_drvdata(pdev);
     int i;
+
+    if (!uart_driver || !uart_driver->ports[0])
+    {
+        UART_DEBUG("UART driver or port is NULL\n");
+        return -EINVAL;
+    }
+
+    if (!message || len <= 0)
+    {
+        UART_DEBUG("Invalid message or length\n");
+        return -EINVAL;
+    }
+
     UART_DEBUG("uart read calling\n");
     UART_DEBUG("length is %d\n", len);
+    
     for (i = 0; i < len; i++)
     {
         tty_insert_flip_char(uart_driver->ports[0], message[i], TTY_NORMAL);
-        tty_flip_buffer_push(uart_driver->ports[0]);
     }
-    return 0;
-}
+    tty_flip_buffer_push(uart_driver->ports[0]);
 
-/*
-** this functions is used for getting baud_rate for uart device
-*/
-int get_tty_baud_rate(struct tty_struct *tty)
-{
-    speed_t baud_rate = 0;
-    if (tty && tty->termios.c_cflag & CBAUD)
-    {
-        baud_rate = tty_termios_baud_rate(&tty->termios);
-    }
-    return (int)baud_rate;
+    return 0;
 }
 
 /*
 ** uart open function
 */
-static int tty_open(struct tty_struct *tty, struct file *file)
+static int tty_periplex_open(struct tty_struct *tty, struct file *file)
 {
     return 0;
 }
@@ -80,7 +145,7 @@ static int tty_open(struct tty_struct *tty, struct file *file)
 /*
 ** uart close function
 */
-static void tty_close(struct tty_struct *tty, struct file *file)
+static void tty_periplex_close(struct tty_struct *tty, struct file *file)
 {
     return;
 }
@@ -88,7 +153,7 @@ static void tty_close(struct tty_struct *tty, struct file *file)
 /*
 ** uart write function
 */
-static int tty_fpga_write(struct tty_struct *tty, const unsigned char *buffer,
+static int tty_periplex_write(struct tty_struct *tty, const unsigned char *buffer,
                           int count)
 {
     int periplex_id = tty->driver->name_base;
@@ -99,7 +164,7 @@ static int tty_fpga_write(struct tty_struct *tty, const unsigned char *buffer,
 /*
 ** uart write-room function
 */
-static int tty_fpga_write_room(struct tty_struct *tty)
+static int tty_periplex_write_room(struct tty_struct *tty)
 {
     return 1;
 }
@@ -107,23 +172,72 @@ static int tty_fpga_write_room(struct tty_struct *tty)
 /*
 ** uart set-termios function used for set the configurations
 */
-static void tty_fpga_set_termios(struct tty_struct *tty, struct ktermios *old)
+static void tty_periplex_set_termios(struct tty_struct *tty, struct ktermios *old)
 {
-    int periplex_id = tty->driver->name_base;
-    int configuration = get_tty_baud_rate(tty);
-    configuration = 50000000 / get_tty_baud_rate(tty);
-    set_periplex_configuration(periplex_id, 0, configuration);
+    struct uart_config config;
+    int periplex_id;
+    int baud_divisor;
+    u32 width_parity_stop;
+
+    if (!tty || !tty->driver) {
+        pr_err("periplex_uart_set_termios: Invalid tty or driver\n");
+        return;
+    }
+
+    periplex_id = tty->driver->name_base;
+
+    /* Extract UART parameters */
+    config.baud_rate = get_baud_rate(&tty->termios);
+    config.data_bits = get_data_width(&tty->termios);
+    config.parity    = get_parity_type(&tty->termios);
+    config.stop_bits = get_stop_bits(&tty->termios);
+
+    /* Validate parameters */
+    if (config.baud_rate <= 0) {
+        pr_warn("periplex_uart: Invalid baud rate: %d, using default 9600\n", config.baud_rate);
+        config.baud_rate = 9600;
+    }
+
+    if (config.data_bits < 5 || config.data_bits > 8) {
+        pr_warn("periplex_uart: Invalid data bits: %d, using default 8\n", config.data_bits);
+        config.data_bits = 8;
+    }
+
+    if (config.parity < 0 || config.parity > 2) {
+        pr_warn("periplex_uart: Invalid parity: %d, using default 0 (none)\n", config.parity);
+        config.parity = 0;
+    }
+
+    if (config.stop_bits < 1 || config.stop_bits > 2) {
+        pr_warn("periplex_uart: Invalid stop bits: %d, using default 1\n", config.stop_bits);
+        config.stop_bits = 1;
+    }
+
+    UART_DEBUG("UART Config [ID: %d] => Baud: %d, DataBits: %d, Parity: %d, StopBits: %d\n",
+            periplex_id, config.baud_rate, config.data_bits,
+            config.parity, config.stop_bits);
+
+    /* Calculate baud divisor */
+    baud_divisor = 50000000 / config.baud_rate;
+    set_periplex_configuration(periplex_id, 0, baud_divisor);
+
+    /* Pack data_bits, parity, stop_bits into 32-bit integer */
+    width_parity_stop = ((config.data_bits & 0xFF) << 24) |
+                        ((config.parity    & 0xFF) << 16) |
+                        ((config.stop_bits & 0xFF) << 8);
+
+    set_periplex_configuration(periplex_id, 1, width_parity_stop);
 }
 
 /*
 ** initialize the opeations for uart
 */
 static const struct tty_operations serial_ops = {
-    .open = tty_open,
-    .write = tty_fpga_write,
-    .write_room = tty_fpga_write_room,
-    .set_termios = tty_fpga_set_termios,
-    .close = tty_close,
+    .open = tty_periplex_open,
+    .write = tty_periplex_write,
+    .write_room = tty_periplex_write_room,
+    .set_termios = tty_periplex_set_termios,
+    .close = tty_periplex_close,
 };
 
 /*
@@ -131,10 +245,10 @@ static const struct tty_operations serial_ops = {
 */
 static int periplex_uart_probe(struct periplex_device *pdev)
 {
-    int ret;
-    int periplex_id;
-    struct tty_driver *uart_driver;
-    struct tty_port *uart_port;
+    int ret = 0;
+    int periplex_id = 0;
+    struct tty_driver *uart_driver = NULL;
+    struct tty_port *uart_port = NULL;
 
     uart_port = kzalloc(sizeof(struct tty_port), GFP_KERNEL);
     if (!uart_port)
@@ -182,10 +296,10 @@ static int periplex_uart_probe(struct periplex_device *pdev)
     ret = tty_register_driver(uart_driver);
     if (ret)
     {
-        pr_info(KERN_ERR "failed to register tiny tty driver\n");
+        pr_info(KERN_ERR "periplex_uart: failed to register tiny tty driver\n");
         goto cleanup;
     }
-    pr_info("ttyPERI are successfully inserted...\n");
+    pr_info("periplex_uart: ttyPERI are successfully inserted...\n");
 
     return 0;
 
@@ -205,7 +319,7 @@ static int periplex_uart_remove(struct periplex_device *pdev)
     tty_port_destroy(uart_driver->ports[0]);
     periplex_unlink_device(pdev);
     kfree(uart_driver->ports[0]);
-    pr_info("ttyPERI are removed successfully...\n");
+    pr_info("periplex_uart: ttyPERI are removed successfully...\n");
     return 0;
 }
 
@@ -230,5 +344,5 @@ module_periplex_driver(periplex_uart_driver);
 
 MODULE_ALIAS("periplex:uart");
 MODULE_AUTHOR("Vatsal Kevadiya<vhkevadiya15@gmail.com>");
-MODULE_DESCRIPTION("UART Device Driver with read/write operations");
+MODULE_DESCRIPTION("UART Driver for the periplex");
 MODULE_LICENSE("GPL");
