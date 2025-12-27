@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Misc strange devices for vicharak
+
+config PERIPLEX_DHT
+	tristate "DHT temperature and humidity sensor driver for Periplex platform"
+	depends on PERIPLEX 
+	help
+        Capablities of this drivers is to get temperature and humidity from the
+        DHT11/DHT21 and DHT22 sensors
