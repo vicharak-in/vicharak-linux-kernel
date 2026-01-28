@@ -8,3 +8,9 @@ config PERIPLEX_DHT
 	help
         Capablities of this drivers is to get temperature and humidity from the
         DHT11/DHT21 and DHT22 sensors
+        
+config PERIPLEX_WS2812B
+	tristate "WS2812B LED driver for Periplex platform"
+	depends on PERIPLEX 
+	help
+        Capabilities of this driver include driving WS2812B addressable RGB LEDs
