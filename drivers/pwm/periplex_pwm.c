@@ -23,7 +23,6 @@
 ** header file through which device can communicate and generated
 */
 #include <linux/peripheral.h>
-// #include "include/peripheral.h"
 
 #define DRIVER_NAME "periplex-pwm"
 
@@ -37,7 +36,7 @@ MODULE_PARM_DESC(debug, "Enable or disable debug mode");
     do                                   \
     {                                    \
         if (debug)                       \
-            pr_info(fmt, ##__VA_ARGS__); \
+            pr_info("periplex_pwm: "fmt, ##__VA_ARGS__); \
     } while (0)
 
 int fre_clk = 0;
@@ -75,8 +74,8 @@ static int pwm_periplex_apply(struct pwm_chip *chip, struct pwm_device *pwm,
     {
         u64 OFF_time = (state->period - state->duty_cycle) / 20;
         u64 ON_time = state->duty_cycle / 20;
-        pr_info("OFF_time is %llu\n", OFF_time);
-        pr_info("ON_time is %llu\n", ON_time);
+        pr_info("periplex_pwm: OFF_time is %llu\n", OFF_time);
+        pr_info("periplex_pwm: ON_time is %llu\n", ON_time);
 
         message[0] = (OFF_time >> 24) & 0xFF;
         message[1] = (OFF_time >> 16) & 0xFF;
@@ -122,8 +121,8 @@ static const struct pwm_ops pwm_periplex_ops = {
 
 static int pwm_clk_probe(struct periplex_device *pdev)
 {
-    int ret;
-    struct periplex_pwm *pwm;
+    int ret = 0;
+    struct periplex_pwm *pwm = NULL;
 
     pwm = kzalloc(sizeof(struct periplex_pwm), GFP_KERNEL);
     if (!pwm)
@@ -155,7 +154,7 @@ static int pwm_clk_probe(struct periplex_device *pdev)
         goto err_free_pwm;
     }
 
-    pr_info("pwm driver inserted successfully...\n");
+    pr_info("periplex_pwm: pwm driver inserted successfully...\n");
     return 0;
 
 err_free_pwm:
@@ -169,7 +168,7 @@ static int pwm_clk_remove(struct periplex_device *pdev)
     pwmchip_remove(&pwm->chip);
     periplex_unlink_device(pdev);
     kfree(pwm);
-    pr_info("pwm driver removed successfully...\n");
+    pr_info("periplex_pwm: pwm driver removed successfully...\n");
     return 0;
 }
 
@@ -191,5 +190,5 @@ module_periplex_driver(periplex_pwm_driver);
 
 MODULE_ALIAS("periplex:pwm");
 MODULE_AUTHOR("Vatsal Kevadiya <vhkevadiya15@gmail.com>");
-MODULE_DESCRIPTION("PWM Device Driver with read/write operations");
+MODULE_DESCRIPTION("PWM Driver for the Periplex");
 MODULE_LICENSE("GPL");

@@ -4,6 +4,9 @@
 #include <linux/device.h>
 #include <linux/module.h>
 
+#define MAX_MESSAGE_LENGTH 128
+#define MAXIMUM_DEVICE 128
+
 /*
 ** Common Structure for configuration case
 */
@@ -35,6 +38,32 @@ struct kernel_buffer
     int minor;
 };
 
+struct peripheral_burst_data
+{
+    int periplex_id;
+    int total_length;
+    char *whole_data;
+};
+
+struct kernel_burst_data
+{
+    int device_count;
+    struct peripheral_burst_data *data;
+};
+
+struct burst_device_metadata
+{
+    int periplex_id;
+    int total_length;
+};
+
+struct burst_device_request
+{
+    int device_index;
+    char *data_buffer;
+    int buffer_size;
+};
+
 /*
 ** set configuration for a specific peripheral(use in write case)
 */
@@ -45,6 +74,11 @@ void set_periplex_configuration(int peri_id, uint8_t config_id,
 ** set data for a specific peripheral (use in write case)
 */
 void set_periplex_data(int peri_id, int length, char *message);
+
+/*
+** set data burst for multiple peripheral (use in write case)
+*/
+int set_periplex_data_burst(struct peripheral_burst_data *burst_array, int device_count);
 
 /*
 ** Structure representing periplex device

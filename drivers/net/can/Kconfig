@@ -167,6 +167,13 @@ config PCH_CAN
 	  is an IOH for x86 embedded processor (Intel Atom E6xx series).
 	  This driver can access CAN bus.
 
+config PERIPLEX_CAN
+	tristate "Periplex CAN controller"
+	depends on PERIPLEX
+	help
+	  This is a driver for the Periplex CAN controller found on
+	  vaaman throught the Periplex bus.
+
 source "drivers/net/can/c_can/Kconfig"
 source "drivers/net/can/cc770/Kconfig"
 source "drivers/net/can/ifi_canfd/Kconfig"

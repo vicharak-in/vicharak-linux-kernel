@@ -23,7 +23,6 @@
 ** header file through which device can communicate and generated
 */
 #include <linux/peripheral.h>
-// #include "include/peripheral.h"
 
 #define DRIVER_NAME "periplex-onewire"
 
@@ -37,7 +36,7 @@ MODULE_PARM_DESC(debug, "Enable or disable debug mode");
     do                                   \
     {                                    \
         if (debug)                       \
-            pr_info(fmt, ##__VA_ARGS__); \
+            pr_info("periplex_onewire: "fmt, ##__VA_ARGS__); \
     } while (0)
 
 /* One-wire parameters */
@@ -46,88 +45,149 @@ u8 OW_WRITE_PULSE = 2;
 u8 OW_READ_PULSE = 3;
 u8 OW_SEARCH_PULSE = 4;
 
-/*
-** waitqueue used for internal ow operations
+/* 
+** Operation states
 */
-wait_queue_head_t wait_queue_ow_ioctl_search_data;
-int wait_queue_flag_com_ow_search_data;
-
-wait_queue_head_t wait_queue_ow_ack_ioctl_search_data;
-int wait_queue_flag_com_ow_ack_search_data;
-
-wait_queue_head_t wait_queue_ow_ioctl_read_data;
-int wait_queue_flag_com_ow_read_data;
-
-wait_queue_head_t wait_queue_ow_ack_ioctl_read_data;
-int wait_queue_flag_com_ow_ack_read_data;
-
-struct periplex_onewire
+enum onewire_operation_state
 {
-    struct w1_bus_master bus_master;
-    struct periplex_device *pdev;
-    char dev_id[64];
+    OW_IDLE = 0,
+    OW_SEARCHING,
+    OW_READING
 };
 
-char *read_data_onewire = NULL;
-int read_length_onewire = 0;
+/*
+** Structure to hold per-onewire adapter data
+*/
+struct periplex_onewire_data
+{
+    char dev_id[64];
+    int periplex_id;
+    struct w1_bus_master bus_master;
+    struct periplex_device *pdev;
+    struct device *device;
+
+    struct mutex onewire_mutex;
+    struct mutex operation_mutex; // for Serialize operations
+
+    // Operation state management
+    enum onewire_operation_state current_operation;
+    bool operation_in_progress;
+
+    // wait queues and their flags
+    wait_queue_head_t wait_queue_ow_search;
+    wait_queue_head_t wait_queue_ow_read;
+    int wait_queue_flag_search;
+    int wait_queue_flag_read;
+
+    //buffer for search data
+    char *search_data_onewire;
+    int search_length_onewire;
+
+    // FIFO for managing data transfer
+    int total_length;
+    int expected_len;
+
+    struct kfifo fifo;
+};
 
 /*
-** function use in read data for spi
+** function use in read data for onewire
 */
 int read_data_for_onewire(struct periplex_device *peri_dev, char *message,
                           const int length)
 {
-    long timeout = msecs_to_jiffies(3000);
-    int ret = 0;
-    read_length_onewire = length;
-    OW_DEBUG("reading for onewire..... ,length %d\n", length);
+    int actual_stored = 0;
+    struct periplex_onewire_data *ow_data = periplex_get_drvdata(peri_dev);
 
-    read_data_onewire = kmalloc(length, GFP_KERNEL);
-    if (!read_data_onewire)
+    if (!ow_data)
     {
-        pr_err("Failed to allocate memory for read_data_onewire\n");
-        return -ENOMEM;
+        pr_err("periplex_onewire: No OneWire data found for device\n");
+        return -ENODEV;
     }
 
-    if (memcpy(read_data_onewire, message, length) == NULL)
+    // Check if we're in a valid state to receive data
+    mutex_lock(&ow_data->operation_mutex);
+
+    if (!ow_data->operation_in_progress)
     {
-        pr_err("unable to copy data to read_data_onewire\n");
-        kfree(read_data_onewire);
+        pr_warn("periplex_onewire: Received data but no operation in progress\n");
+        mutex_unlock(&ow_data->operation_mutex);
         return -EINVAL;
     }
 
-    if (read_data_onewire[0] != 0)
+    if (message[0] != 0)
     {
-        // handle search part here
-        wait_queue_flag_com_ow_search_data = 1;
-        wake_up_interruptible(&wait_queue_ow_ioctl_search_data);
-
-        wait_queue_flag_com_ow_ack_search_data = 0;
-        ret = wait_event_interruptible_timeout(wait_queue_ow_ack_ioctl_search_data,
-                                               wait_queue_flag_com_ow_ack_search_data != 0,
-                                               timeout);
-
-        if (ret < 0)
+        // Handle search data
+        if (ow_data->current_operation != OW_SEARCHING)
         {
-            pr_err("one-wire:Wait interrupted with error: %d\n", ret);
-            return ret;
+            pr_err("periplex_onewire: Received search data but not in search operation\n");
+            mutex_unlock(&ow_data->operation_mutex);
+            return -EINVAL;
         }
+
+        OW_DEBUG("Search data received, message[1] = %02x\n", message[1]);
+
+        // Clean up any existing search data first
+        if (ow_data->search_data_onewire)
+        {
+            devm_kfree(ow_data->device, ow_data->search_data_onewire);
+            ow_data->search_data_onewire = NULL;
+        }
+
+        ow_data->search_length_onewire = length;
+        ow_data->search_data_onewire = devm_kmalloc(ow_data->device, length, GFP_KERNEL);
+
+        if (!ow_data->search_data_onewire)
+        {
+            pr_err("periplex_onewire: Failed to allocate memory for search_data_onewire\n");
+            mutex_unlock(&ow_data->operation_mutex);
+            return -ENOMEM;
+        }
+
+        memcpy(ow_data->search_data_onewire, message, length);
+
+        ow_data->wait_queue_flag_search = 1;
+        mutex_unlock(&ow_data->operation_mutex);
+        wake_up_interruptible(&ow_data->wait_queue_ow_search);
+
+        msleep(5); // Sleep for 5ms to allow processing
     }
     else
     {
-        // handle read part here
-        wait_queue_flag_com_ow_read_data = 1;
-        wake_up_interruptible(&wait_queue_ow_ioctl_read_data);
-
-        wait_queue_flag_com_ow_ack_read_data = 0;
-        ret = wait_event_interruptible_timeout(wait_queue_ow_ack_ioctl_read_data,
-                                               wait_queue_flag_com_ow_ack_read_data != 0,
-                                               timeout);
-
-        if (ret < 0)
+        // Handle read data
+        if (ow_data->current_operation != OW_READING)
         {
-            pr_err("one-wire:Wait interrupted with error: %d\n", ret);
-            return ret;
+            pr_err("periplex_onewire: Received read data but not in read operation\n");
+            mutex_unlock(&ow_data->operation_mutex);
+            return -EINVAL;
+        }
+
+        mutex_unlock(&ow_data->operation_mutex);
+
+        // Use existing read data handling with proper locking
+        mutex_lock(&ow_data->onewire_mutex);
+
+        actual_stored = kfifo_in(&ow_data->fifo, message + 1, length - 1);
+        if (actual_stored == 0)
+        {
+            dev_err(ow_data->device, "FIFO full, cannot store %d bytes\n", length - 1);
+            mutex_unlock(&ow_data->onewire_mutex);
+            return -ENOSPC;
+        }
+
+        OW_DEBUG("FIFO status: stored=%d, expected=%d, fifo_len=%u\n",
+                 actual_stored, ow_data->expected_len, kfifo_len(&ow_data->fifo));
+
+        if (ow_data->expected_len > 0 &&
+            kfifo_len(&ow_data->fifo) >= ow_data->expected_len)
+        {
+            ow_data->wait_queue_flag_read = 1;
+            mutex_unlock(&ow_data->onewire_mutex);
+            wake_up_interruptible(&ow_data->wait_queue_ow_read);
+        }
+        else
+        {
+            mutex_unlock(&ow_data->onewire_mutex);
         }
     }
 
@@ -168,51 +228,65 @@ static u8 periplex_onewire_touch_bit(void *data, u8 bit)
 */
 static u8 periplex_onewire_reset_bus(void *data)
 {
-    struct periplex_onewire *dev = data;
+    struct periplex_onewire_data *ow_data = data;
     u8 message[1] = {0};
     message[0] = OW_RESET_PULSE;
-    set_periplex_data(dev->pdev->periplex_id, 1, (char *)message);
+    set_periplex_data(ow_data->periplex_id, 1, (char *)message);
     OW_DEBUG("Resetting one-wire bus\n");
     return 0;
 }
 
 /*
-** periple_onewire write block
+** periplex_onewire write block
 */
 static void periplex_onewire_write_block(void *data, const u8 *buf, int len)
 {
-    struct periplex_onewire *dev = data;
     int i;
-    u8 *message;
     u8 len_u8 = 0;
-    OW_DEBUG("write one-wire\n");
-    OW_DEBUG("length: %d\n", len);
+    int chunk_size = 0;
+    u8 *message = NULL;
+    int remaining_len = 0;
+    int current_offset = 0;
+    struct periplex_onewire_data *ow_data = data;
 
-    message = kmalloc(len + 1, GFP_KERNEL);
-    if (!message)
+    OW_DEBUG("write one-wire length %d\n", len);
+
+    remaining_len = len;
+
+    while (remaining_len > 0)
     {
-        OW_DEBUG("Failed to allocate memory\n");
-        return;
-    }
+        chunk_size = min(remaining_len, MAX_CHUNK_SIZE);
 
-    /* Initialize the buffer to zero */
-    memset(message, 0, len);
-    len_u8 = (u8)len << 4;
-    message[0] = ((len_u8 - 1) & 0xF0) | OW_WRITE_PULSE;
-
-    // Print buffer contents
-    if (buf && len > 0)
-    {
-        OW_DEBUG("buffer contents: ");
-        for (i = 0; i < len; i++)
+        message = kmalloc(chunk_size + 1, GFP_KERNEL);
+        if (!message)
         {
-            message[i + 1] = buf[i];
-            OW_DEBUG("0x%02x ", buf[i]);
+            pr_info("periplex_onewire: Failed to allocate memory\n");
+            return;
         }
-        OW_DEBUG("\n");
+
+        // Initialize the buffer to zero
+        memset(message, 0, chunk_size + 1);
+        len_u8 = (u8)(chunk_size - 1);
+        message[0] = ((len_u8 << 3) & 0xF8) | OW_WRITE_PULSE;
+
+        // Print buffer contents
+        if (buf && chunk_size > 0)
+        {
+            OW_DEBUG("buffer contents: ");
+            for (i = 0; i < len; i++)
+            {
+                message[i + 1] = buf[i];
+                OW_DEBUG("0x%02x ", buf[i]);
+            }
+        }
+
+        set_periplex_data(ow_data->periplex_id, chunk_size + 1, (char *)message);
+        kfree(message);
+
+        current_offset += chunk_size;
+        remaining_len -= chunk_size;
     }
-    set_periplex_data(dev->pdev->periplex_id, len + 1, (char *)message);
-    kfree(message);
+
     return;
 }
 
@@ -221,77 +295,141 @@ static void periplex_onewire_write_block(void *data, const u8 *buf, int len)
 */
 static u8 periplex_onewire_read_block(void *data, u8 *buf, int len)
 {
+    struct periplex_onewire_data *ow_data = data;
     int ret = 0;
-    struct periplex_onewire *dev = data;
+    int chunk_size = 0;
+    int remaining_len = 0;
+    int current_offset = 0;
+    u8 len_u8 = 0;
     u8 message[1] = {0};
-    int i = 0;
-    long timeout = msecs_to_jiffies(3000);
-    int count = len;
-    OW_DEBUG("read one-wire, len is %d\n", len);
+    long timeout = msecs_to_jiffies(1000);
 
-    // wait for the actual read data
-    message[0] = (((len - 1) << 4) | OW_READ_PULSE) & 0xFF;
-    set_periplex_data(dev->pdev->periplex_id, 1, (char *)message);
-
-    while (count > 0)
+    if (!ow_data || !buf || len <= 0)
     {
-        wait_queue_flag_com_ow_read_data = 0;
-        ret = wait_event_interruptible_timeout(wait_queue_ow_ioctl_read_data,
-                                               wait_queue_flag_com_ow_read_data != 0,
-                                               timeout);
-
-        if (ret == 0)
-        {
-            // Timeout occurred, handle accordingly
-            if (read_data_onewire != NULL)
-            {
-                kfree(read_data_onewire);
-                read_data_onewire = NULL;
-            }
-            pr_err("Timeout waiting for onewire read-data\n");
-            return len;
-        }
-        else if (ret < 0)
-        {
-            if (read_data_onewire != NULL)
-            {
-                kfree(read_data_onewire);
-                read_data_onewire = NULL;
-            }
-            pr_err("Wait interrupted for onewire read-data: %d\n", ret);
-            return len;
-        }
-
-        if (buf && read_data_onewire)
-        {
-            buf[i] = read_data_onewire[1];
-            OW_DEBUG("Read byte[%d]: 0x%02x\n", i, buf[i]);
-            i++;
-        }
-
-        count--;
-        kfree(read_data_onewire);
-        read_data_onewire = NULL;
-
-        wait_queue_flag_com_ow_ack_read_data = 1;
-        wake_up_interruptible(&wait_queue_ow_ack_ioctl_read_data);
+        pr_err("periplex_onewire: Invalid parameters for read_block\n");
+        return -EINVAL;
     }
 
+    // Acquire operation lock
+    if (!mutex_trylock(&ow_data->operation_mutex))
+    {
+        pr_warn("periplex_onewire: Read operation blocked - another operation in progress\n");
+        return -EBUSY;
+    }
+
+    if (ow_data->operation_in_progress)
+    {
+        pr_warn("periplex_onewire: Read blocked - operation already in progress\n");
+        mutex_unlock(&ow_data->operation_mutex);
+        return -EBUSY;
+    }
+
+    // Set operation state
+    ow_data->current_operation = OW_READING;
+    ow_data->operation_in_progress = true;
+    mutex_unlock(&ow_data->operation_mutex);
+
+    OW_DEBUG("Starting OneWire read for %d bytes\n", len);
+
+    // Reset FIFO and read state
+    mutex_lock(&ow_data->onewire_mutex);
+    kfifo_reset(&ow_data->fifo);
+    ow_data->wait_queue_flag_read = 0;
+    mutex_unlock(&ow_data->onewire_mutex);
+
+    remaining_len = len;
+    current_offset = 0;
+
+    while (remaining_len > 0)
+    {
+        chunk_size = min(remaining_len, MAX_CHUNK_SIZE);
+
+        // Set expected length for this chunk
+        mutex_lock(&ow_data->onewire_mutex);
+        ow_data->expected_len = chunk_size;
+        ow_data->wait_queue_flag_read = 0;
+        mutex_unlock(&ow_data->onewire_mutex);
+
+        // Send read command
+        len_u8 = (u8)(chunk_size - 1);
+        message[0] = (((len_u8 << 3) & 0xF8) | OW_READ_PULSE);
+        set_periplex_data(ow_data->periplex_id, 1, (char *)message);
+
+        // Wait for data
+        ret = wait_event_interruptible_timeout(ow_data->wait_queue_ow_read,
+                                               ow_data->wait_queue_flag_read != 0,
+                                               timeout);
+        if (ret <= 0)
+        {
+            pr_err("periplex_onewire: Read timeout or interrupted: %d\n", ret);
+            ret = (ret == 0) ? -ETIMEDOUT : ret;
+            goto exit_with_error;
+        }
+
+        // Extract data from FIFO
+        mutex_lock(&ow_data->onewire_mutex);
+        if (kfifo_len(&ow_data->fifo) < chunk_size)
+        {
+            pr_err("periplex_onewire: Insufficient data in FIFO: %u < %d\n",
+                   kfifo_len(&ow_data->fifo), chunk_size);
+            mutex_unlock(&ow_data->onewire_mutex);
+            ret = -EIO;
+            goto exit_with_error;
+        }
+
+        ret = kfifo_out(&ow_data->fifo, buf + current_offset, chunk_size);
+        ow_data->expected_len = 0;
+        mutex_unlock(&ow_data->onewire_mutex);
+
+        if (ret != chunk_size)
+        {
+            pr_err("periplex_onewire: FIFO extraction failed: %d != %d\n", ret, chunk_size);
+            ret = -EIO;
+            goto exit_with_error;
+        }
+
+        current_offset += chunk_size;
+        remaining_len -= chunk_size;
+    }
+
+    // Clear operation state
+    mutex_lock(&ow_data->operation_mutex);
+    ow_data->current_operation = OW_IDLE;
+    ow_data->operation_in_progress = false;
+    mutex_unlock(&ow_data->operation_mutex);
+
+    OW_DEBUG("OneWire read completed successfully\n");
     return len;
+
+exit_with_error:
+    // Clean up on error
+    mutex_lock(&ow_data->onewire_mutex);
+    kfifo_reset(&ow_data->fifo);
+    ow_data->expected_len = 0;
+    ow_data->wait_queue_flag_read = 0;
+    mutex_unlock(&ow_data->onewire_mutex);
+
+    // Clear operation state
+    mutex_lock(&ow_data->operation_mutex);
+    ow_data->current_operation = OW_IDLE;
+    ow_data->operation_in_progress = false;
+    mutex_unlock(&ow_data->operation_mutex);
+
+    return ret;
 }
 
 /*
 ** periplex_onewire write byte
 */
-static void periplex_onewire_write_byte(void *data, u8 buf)
+static void periplex_onewire_write_byte(void *data, u8 byte)
 {
-    struct periplex_onewire *dev = data;
+    struct periplex_onewire_data *ow_data = data;
     int write_length = 0;
     u8 message[2] = {0};
     message[0] = ((write_length << 4) | OW_WRITE_PULSE) & 0xFF;
-    message[1] = buf & 0xFF;
-    set_periplex_data(dev->pdev->periplex_id, 2, (char *)message);
-    OW_DEBUG("periplex_onewire_write_byte : 0x%02x\n", buf);
+    message[1] = byte & 0xFF;
+    set_periplex_data(ow_data->periplex_id, 2, (char *)message);
+    OW_DEBUG("periplex_onewire_write_byte : 0x%02x\n", byte);
     return;
 }
 
@@ -310,95 +448,135 @@ static u8 periplex_onewire_read_byte(void *data)
 static void periplex_onewire_search(void *data, struct w1_master *master,
                                     u8 search_type, w1_slave_found_callback callback)
 {
-    struct periplex_onewire *dev = data;
+    struct periplex_onewire_data *ow_data = data;
     int ret = 0;
     int count = 0;
     u8 message[4] = {0};
-    u8 buf[8] = {0};
+    u8 buf[64] = {0};
     u64 rom_code = 0;
     int index = 0;
     int write_length = 0;
     int device_count = 0;
-    long timeout = msecs_to_jiffies(3000);
+    long timeout = msecs_to_jiffies(1000);
+
+    if (!ow_data || !callback)
+    {
+        pr_err("periplex_onewire: Invalid parameters for search\n");
+        return;
+    }
+
+    /* Acquire operation lock to prevent concurrent operations */
+    if (!mutex_trylock(&ow_data->operation_mutex))
+    {
+        pr_warn("periplex_onewire: Search operation blocked - another operation in progress\n");
+        return;
+    }
+
+    /* Check if another operation is already running */
+    if (ow_data->operation_in_progress)
+    {
+        pr_warn("periplex_onewire: Search blocked - operation already in progress\n");
+        mutex_unlock(&ow_data->operation_mutex);
+        return;
+    }
+
+    /* Set operation state */
+    ow_data->current_operation = OW_SEARCHING;
+    ow_data->operation_in_progress = true;
+    ow_data->wait_queue_flag_search = 0;
+
+    /* Clean up any existing search data */
+    if (ow_data->search_data_onewire)
+    {
+        devm_kfree(ow_data->device, ow_data->search_data_onewire);
+        ow_data->search_data_onewire = NULL;
+        ow_data->search_length_onewire = 0;
+    }
+
+    mutex_unlock(&ow_data->operation_mutex);
+
+    OW_DEBUG("Starting OneWire search, search_type=%02x\n", search_type);
+
+    /* Send search command */
     message[0] = OW_RESET_PULSE;
     message[1] = ((write_length << 4) | OW_WRITE_PULSE) & 0xFF;
     message[2] = (search_type) & 0xFF;
     message[3] = (OW_SEARCH_PULSE) & 0xFF;
 
-    set_periplex_data(dev->pdev->periplex_id, 4, (char *)message);
-    OW_DEBUG("Searching one-wire bus, search_type=%02x\n", search_type);
+    set_periplex_data(ow_data->periplex_id, 4, (char *)message);
 
     while (1)
     {
-        wait_queue_flag_com_ow_search_data = 0;
-        ret = wait_event_interruptible_timeout(wait_queue_ow_ioctl_search_data,
-                                               wait_queue_flag_com_ow_search_data != 0,
+        ret = wait_event_interruptible_timeout(ow_data->wait_queue_ow_search,
+                                               ow_data->wait_queue_flag_search != 0,
                                                timeout);
 
         if (ret == 0)
         {
-            // Timeout occurred, handle accordingly
-            if (read_data_onewire != NULL)
-            {
-                kfree(read_data_onewire);
-                read_data_onewire = NULL;
-            }
-            pr_err("Wait timed out for onewire search-data\n");
-            return;
+            pr_err("periplex_onewire: OneWire search timeout\n");
+            break;
         }
         else if (ret < 0)
         {
-            if (read_data_onewire != NULL)
-            {
-                kfree(read_data_onewire);
-                read_data_onewire = NULL;
-            }
-            pr_err("Wait timed out for onewire search-data\n");
-            return;
+            pr_err("periplex_onewire: OneWire search interrupted: %d\n", ret);
+            break;
+        }
+
+        /* Check if we still have valid search data */
+        mutex_lock(&ow_data->operation_mutex);
+        if (!ow_data->search_data_onewire || ow_data->current_operation != OW_SEARCHING)
+        {
+            mutex_unlock(&ow_data->operation_mutex);
+            break;
         }
 
         count++;
-        index = read_data_onewire[0] & 0x0F;
-        buf[index - 1] = read_data_onewire[1];
+        index = ow_data->search_data_onewire[0] & 0x0F;
+        if (index > 0 && index <= 8)
+        {
+            buf[index - 1] = ow_data->search_data_onewire[1];
+        }
+
+        /* Clean up current search data */
+        devm_kfree(ow_data->device, ow_data->search_data_onewire);
+        ow_data->search_data_onewire = NULL;
+        ow_data->wait_queue_flag_search = 0;
+
+        mutex_unlock(&ow_data->operation_mutex);
 
         if ((count % 8) == 0)
         {
-            pr_info("inside if: count is %d\n", count);
             rom_code = convert_u8_array_to_u64_le(buf);
-            pr_info("Found 1-Wire device with ROM ID: 0x%016llx\n", rom_code);
-
-            // Only call the callback if the ROM code is valid (non-zero)
             if (rom_code != 0)
             {
-                // Make sure the callback function exists
-                if (callback)
-                {
-                    OW_DEBUG("Calling callback for ROM ID: 0x%016llx\n", rom_code);
-                    callback(master, rom_code);
-                    device_count++;
-                }
-                else
-                {
-                    pr_err("Callback function is NULL\n");
-                }
+                pr_info("periplex_onewire: Found 1-Wire device with ROM ID: 0x%016llx\n", rom_code);
+                callback(master, rom_code);
+                device_count++;
             }
-            else
-            {
-                pr_warn("Found zero ROM ID, ignoring device\n");
-            }
+            pr_info("periplex_onewire: 1-Wire search completed. Found %d devices\n", device_count);
             memset(buf, 0, sizeof(buf));
-            pr_info("1-Wire search completed. Found %d devices\n", device_count);
+            // break; /* Exit after finding devices */
         }
 
-        pr_info("count is %d\n", count);
-        kfree(read_data_onewire);
-        read_data_onewire = NULL;
-
-        wait_queue_flag_com_ow_ack_search_data = 1;
-        wake_up_interruptible(&wait_queue_ow_ack_ioctl_search_data);
+        OW_DEBUG("Search progress: count=%d\n", count);
     }
 
-    return;
+    /* Clear operation state */
+    mutex_lock(&ow_data->operation_mutex);
+    ow_data->current_operation = OW_IDLE;
+    ow_data->operation_in_progress = false;
+
+    /* Final cleanup */
+    if (ow_data->search_data_onewire)
+    {
+        devm_kfree(ow_data->device, ow_data->search_data_onewire);
+        ow_data->search_data_onewire = NULL;
+        ow_data->search_length_onewire = 0;
+    }
+
+    mutex_unlock(&ow_data->operation_mutex);
+
+    OW_DEBUG("OneWire search operation completed\n");
 }
 
 static u8 periplex_onewire_triplet(void *data, u8 bit)
@@ -413,65 +591,90 @@ static u8 periplex_onewire_triplet(void *data, u8 bit)
 */
 static int periplex_onewire_probe(struct periplex_device *pdev)
 {
-    struct periplex_onewire *ow_dev;
-    int periplex_id;
+    struct periplex_onewire_data *ow_data;
     int ret;
 
-    /* 	initialize ow internal wait queue */
-    init_waitqueue_head(&wait_queue_ow_ioctl_search_data);
-    init_waitqueue_head(&wait_queue_ow_ack_ioctl_search_data);
-    init_waitqueue_head(&wait_queue_ow_ioctl_read_data);
-    init_waitqueue_head(&wait_queue_ow_ack_ioctl_read_data);
-
-    ow_dev = kzalloc(sizeof(struct periplex_onewire), GFP_KERNEL);
-    if (!ow_dev)
-        return -ENOMEM;
-
-    if (device_property_read_u32(&pdev->dev, "periplex-id", &periplex_id))
+    ow_data = devm_kzalloc(&pdev->dev, sizeof(struct periplex_onewire_data), GFP_KERNEL);
+    if (!ow_data)
     {
-        dev_err(&pdev->dev, "Failed to read periplex-id from device tree for one-wire\n");
-        ret = -EINVAL;
-        goto cleanup_alloc;
+        dev_err(&pdev->dev, "Failed to allocate memory for OneWire data\n");
+        return -ENOMEM;
     }
 
-    /* Initialize one-wire bus master */
-    ow_dev->bus_master.data = ow_dev;
-    ow_dev->bus_master.touch_bit = periplex_onewire_touch_bit;
-    ow_dev->bus_master.reset_bus = periplex_onewire_reset_bus;
-    ow_dev->bus_master.write_block = periplex_onewire_write_block;
-    ow_dev->bus_master.read_block = periplex_onewire_read_block;
-    ow_dev->bus_master.write_byte = periplex_onewire_write_byte;
-    ow_dev->bus_master.read_byte = periplex_onewire_read_byte;
-    ow_dev->bus_master.search = periplex_onewire_search;
-    ow_dev->bus_master.triplet = periplex_onewire_triplet;
-    ow_dev->pdev = pdev;
+    ret = kfifo_alloc(&ow_data->fifo, FIFO_SIZE, GFP_KERNEL);
+    if (ret)
+    {
+        dev_err(&pdev->dev, "Failed to allocate FIFO\n");
+        return ret;
+    }
 
-    /* Set device ID */
-    snprintf(ow_dev->dev_id, sizeof(ow_dev->dev_id), "owewire-%d", periplex_id);
-    ow_dev->bus_master.dev_id = ow_dev->dev_id;
+    /* Initialize data structure */
+    ow_data->total_length = 0;
+    ow_data->expected_len = 0;
+    ow_data->device = &pdev->dev;
+    ow_data->search_data_onewire = NULL;
+    ow_data->search_length_onewire = 0;
+    ow_data->wait_queue_flag_search = 0;
+    ow_data->wait_queue_flag_read = 0;
+
+    /* Initialize operation state */
+    ow_data->current_operation = OW_IDLE;
+    ow_data->operation_in_progress = false;
+
+    /* Initialize mutexes */
+    mutex_init(&ow_data->onewire_mutex);
+    mutex_init(&ow_data->operation_mutex); /* NEW */
+    init_waitqueue_head(&ow_data->wait_queue_ow_search);
+    init_waitqueue_head(&ow_data->wait_queue_ow_read);
+
+    /* Read device tree properties */
+    if (device_property_read_u32(&pdev->dev, "periplex-id", &ow_data->periplex_id))
+    {
+        dev_err(&pdev->dev, "Failed to read periplex-id from device tree\n");
+        ret = -EINVAL;
+        goto err_free_fifo;
+    }
+
+    /* Initialize bus master functions */
+    ow_data->bus_master.data = ow_data;
+    ow_data->bus_master.touch_bit = periplex_onewire_touch_bit;
+    ow_data->bus_master.reset_bus = periplex_onewire_reset_bus;
+    ow_data->bus_master.write_block = periplex_onewire_write_block;
+    ow_data->bus_master.read_block = periplex_onewire_read_block;
+    ow_data->bus_master.write_byte = periplex_onewire_write_byte;
+    ow_data->bus_master.read_byte = periplex_onewire_read_byte;
+    ow_data->bus_master.search = periplex_onewire_search;
+    ow_data->bus_master.triplet = periplex_onewire_triplet;
+    ow_data->pdev = pdev;
+
+    snprintf(ow_data->dev_id, sizeof(ow_data->dev_id), "onewire-%d", ow_data->periplex_id);
+    ow_data->bus_master.dev_id = ow_data->dev_id;
 
     /* Link with periplex subsystem */
-    pdev->periplex_id = periplex_id;
+    pdev->periplex_id = ow_data->periplex_id;
     pdev->get_periplex_data = read_data_for_onewire;
 
     periplex_link_device(pdev);
-    periplex_set_drvdata(pdev, ow_dev);
+    periplex_set_drvdata(pdev, ow_data);
 
     /* Register with w1 subsystem */
-    ret = w1_add_master_device(&ow_dev->bus_master);
+    ret = w1_add_master_device(&ow_data->bus_master);
     if (ret)
     {
         dev_err(&pdev->dev, "Failed to register w1 master device\n");
-        goto cleanup_link;
+        goto err_unlink_device;
     }
 
-    pr_info("owewire successfully initialized\n");
+    pr_info("periplex_onewire: OneWire Bus Driver Added: %s (periplex_id: %d)\n",
+            ow_data->dev_id, ow_data->periplex_id);
+
     return 0;
 
-cleanup_link:
+err_unlink_device:
     periplex_unlink_device(pdev);
-cleanup_alloc:
-    kfree(ow_dev);
+    periplex_set_drvdata(pdev, NULL);
+err_free_fifo:
+    kfifo_free(&ow_data->fifo);
     return ret;
 }
 
@@ -480,13 +683,49 @@ cleanup_alloc:
 */
 static int periplex_onewire_remove(struct periplex_device *pdev)
 {
-    struct periplex_onewire *ow_dev = periplex_get_drvdata(pdev);
+    struct periplex_onewire_data *ow_data = periplex_get_drvdata(pdev);
 
-    w1_remove_master_device(&ow_dev->bus_master);
+    if (!ow_data)
+    {
+        dev_err(&pdev->dev, "No OneWire data found for device\n");
+        return -ENODEV;
+    }
+
+    OW_DEBUG("Removing OneWire Bus Driver: %s (periplex_id: %d)\n",
+             ow_data->dev_id, ow_data->periplex_id);
+
+    // Clear driver data first to prevent further access
+    periplex_set_drvdata(pdev, NULL);
+
+    // Wake up any waiting threads before cleanup
+    mutex_lock(&ow_data->onewire_mutex);
+    ow_data->wait_queue_flag_search = 1;
+    ow_data->wait_queue_flag_read = 1;
+    mutex_unlock(&ow_data->onewire_mutex);
+
+    wake_up_interruptible(&ow_data->wait_queue_ow_search);
+    wake_up_interruptible(&ow_data->wait_queue_ow_read);
+
+    // Remove w1 master device first
+    w1_remove_master_device(&ow_data->bus_master);
+
+    // Clean up any remaining search data with proper locking
+    mutex_lock(&ow_data->onewire_mutex);
+    if (ow_data->search_data_onewire)
+    {
+        devm_kfree(ow_data->device, ow_data->search_data_onewire);
+        ow_data->search_data_onewire = NULL;
+        ow_data->search_length_onewire = 0;
+    }
+    mutex_unlock(&ow_data->onewire_mutex);
+
+    // Free FIFO (this was allocated with kfifo_alloc)
+    kfifo_free(&ow_data->fifo);
+
+    // Unlink from periplex framework
     periplex_unlink_device(pdev);
-    kfree(ow_dev);
 
-    pr_info("onewire device removed successfully\n");
+    pr_info("periplex_onewire: OneWire Bus Driver removed successfully\n");
     return 0;
 }
 
@@ -511,5 +750,5 @@ module_periplex_driver(periplex_onewire_driver);
 
 MODULE_ALIAS("periplex:onewire");
 MODULE_AUTHOR("vatsal Kevadiya<vhkevadiya15@gmail.com>");
-MODULE_DESCRIPTION("One-Wire Device Driver with read/write operations");
+MODULE_DESCRIPTION("One-Wire Driver for the Periplex");
 MODULE_LICENSE("GPL");
