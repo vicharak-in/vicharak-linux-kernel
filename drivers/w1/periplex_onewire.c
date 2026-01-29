@@ -18,6 +18,8 @@
 #include <linux/moduleparam.h>
 #include <linux/w1.h>
 #include <linux/types.h>
+#include <linux/mutex.h>
+#include <linux/kfifo.h>
 
 /*
 ** header file through which device can communicate and generated
@@ -39,7 +41,12 @@ MODULE_PARM_DESC(debug, "Enable or disable debug mode");
             pr_info("periplex_onewire: "fmt, ##__VA_ARGS__); \
     } while (0)
 
-/* One-wire parameters */
+/* 
+** One-wire parameters
+*/
+#define MAX_CHUNK_SIZE 32
+#define FIFO_SIZE (100 * 10)
+
 u8 OW_RESET_PULSE = 1;
 u8 OW_WRITE_PULSE = 2;
 u8 OW_READ_PULSE = 3;

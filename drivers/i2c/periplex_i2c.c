@@ -1032,7 +1032,7 @@ static int periplex_i2c_remove(struct periplex_device *pdev)
 ** compitable property match with DTSO of i2c
 */
 struct of_device_id periplex_i2c_dt_match[] = {
-	{.compatible = "vicharak,periplex-i2c"},
+	{.compatible = "vicharak,periplex-i2cmaster"},
 	{},
 };
 MODULE_DEVICE_TABLE(of, periplex_i2c_dt_match);
