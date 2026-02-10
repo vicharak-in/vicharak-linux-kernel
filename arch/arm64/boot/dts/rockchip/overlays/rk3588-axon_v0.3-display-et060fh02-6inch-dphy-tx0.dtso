@@ -1,0 +1,183 @@
+//SPDX-License-Identifier: GPL-2..0+
+// Copyright (C) 2024 Vicharak Computers PVT LTD
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/display/drm_mipi_dsi.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+&{/} {
+	metadata {
+		title = "Enable ET060FH02 6inch AMOLED DSI LCD on DPHY TX0";
+		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+		category = "display";
+		exclusive = "dsi0", "vp3", "dsi0_in_vp3", "vp3_out_dsi0";
+		description = "Enables support for the ET060FH02 6-inch AMOLED DSI LCD screen (CH13721C).\nPlease note that HDMI/DP output will be disabled as a result.";
+	};
+
+	vcc_mipidcphy0: vcc-mipi-dcphy0 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_mipidcphy0";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&pca9554 7 GPIO_ACTIVE_HIGH>;
+		regulator-always-on;
+		regulator-boot-on;
+		enable-active-high;
+		vin-supply = <&vcc1_5v0>;
+	};
+};
+
+&mipi_dcphy0 {
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	youritech_panel: panel@0 {
+        compatible = "simple-panel-dsi";
+		reg = <0>;
+		rotation = <0>;
+		reset-gpios = <&gpio2 RK_PC1 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&dsi0_lcd_rst_gpio>;
+        status = "okay";
+
+		reset-delay-ms = <120>;
+
+		prepare-delay-ms = <120>;
+		init-delay-ms = <120>;
+		enable-delay-ms = <100>;
+		disable-delay-ms = <120>;
+		unprepare-delay-ms = <120>;
+
+		width-mm = <62>;
+		height-mm = <110>;
+
+		dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
+				MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_EOT_PACKET)>;
+		dsi,format = <MIPI_DSI_FMT_RGB888>;
+		dsi,lanes = <4>;
+
+		panel-init-sequence = [
+			39 00 02 35 00
+			05 78 01 11
+			05 28 01 29
+			39 00 02 53 00
+		];
+
+		panel-exit-sequence = [
+			05 78 01 28
+			05 00 01 10
+		];
+
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing0 {
+				clock-frequency = <145458240>;
+				hactive = <1080>;
+				vactive = <2160>;
+
+				vback-porch = <12>;
+				vfront-porch = <12>;
+
+				hback-porch = <12>;
+				hfront-porch = <12>;
+
+				hsync-len = <4>;
+				vsync-len = <4>;
+
+				vsync-active = <0>;
+				hsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+
+		ports {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port@0 {
+                reg = <0>;
+                panel_in_dsi: endpoint {
+                    remote-endpoint = <&dsi_out_panel>;
+                };
+            };
+        };
+    };
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+
+			dsi_out_panel: endpoint {
+				remote-endpoint = <&panel_in_dsi>;
+			};
+		};
+	};
+};
+
+&dsi0_in_vp2 {
+	status = "disabled";
+};
+
+&dsi0_in_vp3 {
+	status = "okay";
+};
+
+&vp3_out_dsi0 {
+	status = "okay";
+};
+
+&route_dsi0 {
+	status = "okay";
+	connect = <&vp3_out_dsi0>;
+};
+
+&i2c2 {
+	status = "okay";
+	clock-frequency = <400000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-0 = <&i2c2m4_xfer>;
+
+	focaltech@38 {
+		compatible = "focaltech,fts";
+		status = "okay";
+		reg = <0x38>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <RK_PC0 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&focaltech_gpio>;
+		focaltech,reset-gpio = <&gpio3 RK_PC1 GPIO_ACTIVE_HIGH>;
+		focaltech,irq-gpio = <&gpio3 RK_PC0 IRQ_TYPE_LEVEL_LOW>;
+		focaltech,max-touch-number = <10>;
+		focaltech,display-coords = <0 0 1079 2159>;
+	};
+};
+
+&pinctrl {
+	dsi0-lcd {
+		dsi0_lcd_rst_gpio: dsi0-lcd-rst-gpio {
+			rockchip,pins = <2 RK_PC1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	focaltech {
+		focaltech_gpio: focaltech-gpio {
+			rockchip,pins =
+				<3 RK_PC1 RK_FUNC_GPIO &pcfg_pull_none>,
+				<3 RK_PC0 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+};
