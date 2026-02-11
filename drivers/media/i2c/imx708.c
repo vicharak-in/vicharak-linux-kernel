@@ -1421,7 +1421,7 @@ static int imx708_power_on(struct device *dev)
 		goto reg_off;
 	}
 
-	gpiod_direction_output(imx708->reset_gpio, 1);
+	gpiod_set_value_cansleep(imx708->reset_gpio, 1);
 	usleep_range(IMX708_XCLR_MIN_DELAY_US,
 		     IMX708_XCLR_MIN_DELAY_US + IMX708_XCLR_DELAY_RANGE_US);
 
@@ -1442,7 +1442,7 @@ static int imx708_power_off(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx708 *imx708 = to_imx708(sd);
 
-	gpiod_direction_output(imx708->reset_gpio, 0);
+	gpiod_set_value_cansleep(imx708->reset_gpio, 0);
 	regulator_bulk_disable(ARRAY_SIZE(imx708_supply_name),
 			       imx708->supplies);
 	clk_disable_unprepare(imx708->inclk);
@@ -2040,9 +2040,9 @@ static int imx708_probe(struct i2c_client *client,
 		return dev_err_probe(dev, ret, "failed to get regulators\n");
 
 	/* Request optional enable pin */
-	imx708->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_ASIS);
-	if (IS_ERR(imx708->reset_gpio))
-		dev_warn(dev, "Failed to get reset-gpios\n");
+	imx708->reset_gpio = devm_gpiod_get_optional(dev, "reset",
+							GPIOD_OUT_HIGH);
+
 	/*
 	 * The sensor must be powered for imx708_identify_module()
 	 * to be able to read the CHIP_ID register
