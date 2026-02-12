@@ -36,6 +36,10 @@ dtbo-$(CONFIG_BOARD_VICHARAK_AXON) += \
 	rk3588-axon_v0.3-sata2-combphy2.dtbo \
 	rk3588-axon_v0.3-disable-bluetooth.dtbo \
 	rk3588-axon_v0.3-disable-wlan.dtbo \
+	rk3588-axon_v0.3-camera-imx708-csi0-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx708-csi1-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx708-dphy-rx0-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx708-dphy-rx1-alpha.dtbo \
 	rk3588-axon_v0.3-camera-ov5647-csi0-alpha.dtbo \
 	rk3588-axon_v0.3-camera-ov5647-csi1-alpha.dtbo \
 	rk3588-axon_v0.3-camera-ov5647-dphy-rx0-alpha.dtbo \
