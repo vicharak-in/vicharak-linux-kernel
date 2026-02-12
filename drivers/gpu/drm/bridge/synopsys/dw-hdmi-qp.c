@@ -3403,11 +3403,10 @@ void dw_hdmi_qp_cec_set_hpd(struct dw_hdmi_qp *hdmi, bool plug_in, bool change)
 	else if (hdmi->ddc) {
 		struct edid *edid = drm_get_edid(&hdmi->connector, hdmi->ddc);
 		if (edid) {
-			if (hdmi->cec_notifier)
-				cec_notifier_set_phys_addr_from_edid(
-				hdmi->cec_notifier, edid);
-				kfree(edid);
-			}
+			cec_notifier_set_phys_addr_from_edid(hdmi->cec_notifier,
+							     edid);
+			kfree(edid);
+		}
 	}
 	if (hdmi->bridge.dev) {
 #if IS_REACHABLE(CONFIG_DRM_DW_HDMI_CEC)
