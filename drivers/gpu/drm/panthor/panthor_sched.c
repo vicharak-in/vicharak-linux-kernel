@@ -3005,8 +3005,6 @@ prepare_job_instrs(const struct panthor_job_cs_params *params,
 	};
 	u32 pad;
 
-	instrs->count = 0;
-
 	/* NEED to be cacheline aligned to please the prefetcher. */
 	static_assert(sizeof(instrs->buffer) % 64 == 0,
 		      "panthor_job_ringbuf_instrs::buffer is not aligned on a cacheline");
@@ -3015,6 +3013,8 @@ prepare_job_instrs(const struct panthor_job_cs_params *params,
 	static_assert(ALIGN(ARRAY_SIZE(instr_seq), NUM_INSTRS_PER_CACHE_LINE) ==
 		      ARRAY_SIZE(instrs->buffer),
 		      "instr_seq vs panthor_job_ringbuf_instrs::buffer size mismatch");
+
+	instrs->count = 0;
 
 	for (u32 i = 0; i < ARRAY_SIZE(instr_seq); i++) {
 		/* If the profile mask of this instruction is not enabled, skip it. */
