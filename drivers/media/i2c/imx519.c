@@ -1600,6 +1600,17 @@ err_unlock:
 	return ret;
 }
 
+static int imx519_get_frame_interval(struct v4l2_subdev *sd,
+				     struct v4l2_subdev_frame_interval *fi)
+{
+	struct imx519 *imx519 = to_imx519(sd);
+	const struct imx519_mode *mode = imx519->mode;
+
+	fi->interval = mode->timeperframe_min;
+
+	return 0;
+}
+
 /* Power/clock management functions */
 static int imx519_power_on(struct device *dev)
 {
@@ -1729,6 +1740,7 @@ static const struct v4l2_subdev_core_ops imx519_core_ops = {
 
 static const struct v4l2_subdev_video_ops imx519_video_ops = {
 	.s_stream = imx519_set_stream,
+	.g_frame_interval = imx519_get_frame_interval,
 };
 
 static const struct v4l2_subdev_pad_ops imx519_pad_ops = {
