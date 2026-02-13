@@ -1,0 +1,94 @@
+//SPDX-License-Identifier: GPL-2..0+
+// Copyright (C) 2024 Vicharak Computers PVT LTD
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/display/drm_mipi_dsi.h>
+
+&{/} {
+	metadata {
+		title = "Enable Waveshare 4inch DSI LCD DPHY TX1 Axon V0.3";
+		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+		category = "display";
+		exclusive = "waveshare_panel_5_45", "dsi1", "vp3", "dsi1_in_vp3", "vp3_out_dsi1";
+		description = "Enables support for the Waveshare 4-inch LCD screen for DSI0 on\n Vicharak Axon at I2C 5 bus address 45.\n";
+	};
+
+	vcc_mipidcphy1: vcc-mipi-dcphy1 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_mipidcphy1";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&pca9554 7 GPIO_ACTIVE_HIGH>;
+		regulator-always-on;
+		regulator-boot-on;
+		enable-active-high;
+		vin-supply = <&vcc1_5v0>;
+	};
+};
+
+&mipi_dcphy1 {
+	status = "okay";
+};
+
+&dsi1 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+
+			dsi_out_panel: endpoint {
+				remote-endpoint = <&panel_in_dsi>;
+			};
+		};
+	};
+};
+
+&dsi1_in_vp2 {
+	status = "disabled";
+};
+
+&dsi1_in_vp3 {
+	status = "okay";
+};
+
+&vp3_out_dsi1 {
+	status = "okay";
+};
+
+&route_dsi1 {
+	status = "okay";
+	connect = <&vp3_out_dsi1>;
+};
+
+&i2c5 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	waveshare_panel_5_45: panel@45 {
+		compatible = "waveshare,4.0inch-panel";
+		reg = <0x45>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				panel_in_dsi: endpoint {
+					remote-endpoint = <&dsi_out_panel>;
+				};
+			};
+		};
+	};
+};
