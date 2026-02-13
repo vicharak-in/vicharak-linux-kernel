@@ -1511,8 +1511,8 @@ static int imx519_get_selection(struct v4l2_subdev *sd,
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP_BOUNDS:
-		sel->r.left = IMX519_PIXEL_ARRAY_LEFT;
-		sel->r.top = IMX519_PIXEL_ARRAY_TOP;
+		sel->r.left = 0;
+		sel->r.top = 0;
 		sel->r.width = IMX519_PIXEL_ARRAY_WIDTH;
 		sel->r.height = IMX519_PIXEL_ARRAY_HEIGHT;
 
