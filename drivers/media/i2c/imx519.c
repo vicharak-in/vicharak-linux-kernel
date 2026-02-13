@@ -15,6 +15,7 @@
 #include <linux/of_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
+#include <linux/rk-camera-module.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-event.h>
@@ -23,6 +24,8 @@
 
 #define IMX519_REG_VALUE_08BIT		1
 #define IMX519_REG_VALUE_16BIT		2
+
+#define IMX519_NAME			"imx519"
 
 /* Chip ID */
 #define IMX519_REG_CHIP_ID		0x0016
@@ -1026,6 +1029,13 @@ struct imx519 {
 	struct regulator_bulk_data supplies[IMX519_NUM_SUPPLIES];
 
 	struct v4l2_ctrl_handler ctrl_handler;
+
+	/* Module information */
+	u32			module_index;
+	const char		*module_facing;
+	const char		*module_name;
+	const char		*len_name;
+
 	/* V4L2 Controls */
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *exposure;
@@ -1319,6 +1329,17 @@ static int imx519_enum_frame_size(struct v4l2_subdev *sd,
 	fse->max_width = fse->min_width;
 	fse->min_height = supported_modes_10bit[fse->index].height;
 	fse->max_height = fse->min_height;
+
+	return 0;
+}
+
+static int imx519_get_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
+				  struct v4l2_mbus_config *config)
+{
+	struct imx519 *imx519 = to_imx519(sd);
+
+	config->type = V4L2_MBUS_CSI2_DPHY;
+	config->bus.mipi_csi2.num_data_lanes = 2;
 
 	return 0;
 }
@@ -1661,6 +1682,77 @@ static int imx519_power_off(struct device *dev)
 	return 0;
 }
 
+static void imx519_get_module_inf(struct imx519 *imx519,
+				  struct rkmodule_inf *inf)
+{
+	memset(inf, 0, sizeof(*inf));
+	strlcpy(inf->base.sensor, IMX519_NAME, sizeof(inf->base.sensor));
+	strlcpy(inf->base.module, imx519->module_name,
+		sizeof(inf->base.module));
+	strlcpy(inf->base.lens, imx519->len_name, sizeof(inf->base.lens));
+}
+
+static long imx519_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
+{
+	struct imx519 *imx519 = to_imx519(sd);
+	long ret = 0;
+
+	switch (cmd) {
+	case RKMODULE_GET_MODULE_INFO:
+		imx519_get_module_inf(imx519, (struct rkmodule_inf *)arg);
+		break;
+	default:
+		ret = -ENOIOCTLCMD;
+		break;
+	}
+
+	return ret;
+}
+
+#ifdef CONFIG_COMPAT
+static long imx519_compat_ioctl32(struct v4l2_subdev *sd,
+				  unsigned int cmd, unsigned long arg)
+{
+	void __user *up = compat_ptr(arg);
+	struct rkmodule_inf *inf;
+	struct rkmodule_awb_cfg *cfg;
+	long ret;
+
+	switch (cmd) {
+	case RKMODULE_GET_MODULE_INFO:
+		inf = kzalloc(sizeof(*inf), GFP_KERNEL);
+		if (!inf) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = imx519_ioctl(sd, cmd, inf);
+		if (!ret)
+			ret = copy_to_user(up, inf, sizeof(*inf));
+		kfree(inf);
+		break;
+	case RKMODULE_AWB_CFG:
+		cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
+		if (!cfg) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = copy_from_user(cfg, up, sizeof(*cfg));
+		if (!ret)
+			ret = imx519_ioctl(sd, cmd, cfg);
+		kfree(cfg);
+		break;
+	default:
+		ret = -ENOIOCTLCMD;
+		break;
+	}
+
+	return ret;
+}
+#endif
+
+
 static int __maybe_unused imx519_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1734,8 +1826,10 @@ static int imx519_identify_module(struct imx519 *imx519, u32 expected_id)
 }
 
 static const struct v4l2_subdev_core_ops imx519_core_ops = {
-	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
-	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+	.ioctl = imx519_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl32 = imx519_compat_ioctl32,
+#endif
 };
 
 static const struct v4l2_subdev_video_ops imx519_video_ops = {
@@ -1749,6 +1843,7 @@ static const struct v4l2_subdev_pad_ops imx519_pad_ops = {
 	.set_fmt = imx519_set_pad_format,
 	.get_selection = imx519_get_selection,
 	.enum_frame_size = imx519_enum_frame_size,
+	.get_mbus_config = imx519_get_mbus_config,
 };
 
 static const struct v4l2_subdev_ops imx519_subdev_ops = {
@@ -1944,14 +2039,31 @@ static const struct of_device_id imx519_dt_ids[] = {
 static int imx519_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
+	struct device_node *node = dev->of_node;
 	struct imx519 *imx519;
+	struct v4l2_subdev *sd;
 	const struct of_device_id *match;
 	u32 xclk_freq;
+	char facing[2];
 	int ret;
 
 	imx519 = devm_kzalloc(&client->dev, sizeof(*imx519), GFP_KERNEL);
 	if (!imx519)
 		return -ENOMEM;
+
+	ret = of_property_read_u32(node, RKMODULE_CAMERA_MODULE_INDEX,
+				   &imx519->module_index);
+	ret |= of_property_read_string(node, RKMODULE_CAMERA_MODULE_FACING,
+				       &imx519->module_facing);
+	ret |= of_property_read_string(node, RKMODULE_CAMERA_MODULE_NAME,
+				       &imx519->module_name);
+	ret |= of_property_read_string(node, RKMODULE_CAMERA_LENS_NAME,
+				       &imx519->len_name);
+
+	if (ret) {
+		dev_err(dev, "could not get module information!\n");
+		return -EINVAL;
+	}
 
 	v4l2_i2c_subdev_init(&imx519->sd, client, &imx519_subdev_ops);
 
@@ -2028,7 +2140,19 @@ static int imx519_probe(struct i2c_client *client)
 		goto error_handler_free;
 	}
 
-	ret = v4l2_async_register_subdev_sensor(&imx519->sd);
+
+	sd = &imx519->sd;
+	memset(facing, 0, sizeof(facing));
+	if (strcmp(imx519->module_facing, "back") == 0)
+		facing[0] = 'b';
+	else
+		facing[0] = 'f';
+
+	snprintf(sd->name, sizeof(sd->name), "m%02d_%s_%s %s",
+		 imx519->module_index, facing,
+		 IMX519_NAME, dev_name(sd->dev));
+
+	ret = v4l2_async_register_subdev_sensor(sd);
 	if (ret < 0) {
 		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
 		goto error_media_entity;
