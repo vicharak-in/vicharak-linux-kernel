@@ -90,7 +90,7 @@
 		clock-names = "xvclk";
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "rpi-camera-v2p0";
+		rockchip,camera-module-name = "rpi-camera-v2";
 		rockchip,camera-module-lens-name = "default";
 
 		port {
