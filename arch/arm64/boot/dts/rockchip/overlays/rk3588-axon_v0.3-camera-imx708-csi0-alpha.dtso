@@ -12,30 +12,30 @@
 		title = "Enable RasPi Camera V3 (IMX708) on CSI0 Alpha Axon V0.3";
 		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
 		category = "camera";
-		exclusive = "cam3", "imx708_1_1a", "csi2_dphy1", "mipi2_csi2", \
+		exclusive = "cam2", "imx708_1_1a", "csi2_dphy1", "mipi2_csi2", \
 			    "rkcif_mipi_lvds2", "rkcif_mipi_lvds2_sditf", \
-			    "rkisp0_vir2", "cam3_vcm_0c";
+			    "rkisp0_vir2", "cam2_vcm_0c";
 		description = "Enables IMX708 based RaspberryPi Camera V3 on
 \t\tVicharak Axon at I2C 1 bus address 1a on dphy1";
 	};
 
-	cam3_imx708_pwdn_gpio: cam3-pwdn-gpio {
+	cam2_imx708_pwdn_gpio: cam2-pwdn-gpio {
 		status = "okay";
 		compatible = "regulator-fixed";
-		regulator-name = "cam3_pwdn_gpio";
+		regulator-name = "cam2_pwdn_gpio";
 		regulator-always-on;
 		regulator-boot-on;
 		enable-active-high;
 		gpio = <&gpio1 RK_PB5 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&cam3_pwdn_gpio>;
+		pinctrl-0 = <&cam2_pwdn_gpio>;
 	};
 	
-	clk_cam3_24m: external-cam3-clock-24m {
+	clk_cam2_24m: external-cam2-clock-24m {
 		status = "okay";
 		compatible = "fixed-clock";
 		clock-frequency = <24000000>;
-		clock-output-names = "clk_cam3_24m";
+		clock-output-names = "clk_cam2_24m";
 		#clock-cells = <0>;
 	};
 };
@@ -45,30 +45,30 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	
-	cam3_vcm_0c: cam3-vcm@0c {
+	cam2_vcm_0c: cam2-vcm@0c {
 		compatible = "dongwoon,dw9807-vcm";
 		reg = <0x0c>;
 		status = "okay";
 	};
 
-	cam3_imx708_1a: cam3-imx708@1a {
+	cam2_imx708_1a: cam2-imx708@1a {
 		status = "okay";
 		compatible = "sony,imx708";
 		reg = <0x1a>;
 
-		clocks = <&clk_cam3_24m>;
+		clocks = <&clk_cam2_24m>;
 		clock-names = "xclk";
 
-		rockchip,camera-module-index = <3>;
+		rockchip,camera-module-index = <2>;
 		rockchip,camera-module-facing = "front";
 		rockchip,camera-module-name = "rpi-camera-v3";
 		rockchip,camera-module-lens-name = "default";
 
-		lens-focus = <&cam3_vcm_0c>;
+		lens-focus = <&cam2_vcm_0c>;
 
 		port {
-			cam3_imx708_out0: endpoint {
-				remote-endpoint = <&mipidphy1_in_ucam3>;
+			cam2_imx708_out0: endpoint {
+				remote-endpoint = <&mipidphy1_in_ucam2>;
 				link-frequencies = /bits/ 64 <450000000>;
 				data-lanes = <1 2>;
 			};
@@ -88,9 +88,9 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			mipidphy1_in_ucam3: endpoint@1 {
+			mipidphy1_in_ucam2: endpoint@1 {
 				reg = <1>;
-				remote-endpoint = <&cam3_imx708_out0>;
+				remote-endpoint = <&cam2_imx708_out0>;
 				data-lanes = <1 2>;
 			};
 
@@ -192,7 +192,7 @@
 
 &pinctrl {
 	camera {
-		cam3_pwdn_gpio: cam3-pwdn-gpio {
+		cam2_pwdn_gpio: cam2-pwdn-gpio {
 			rockchip,pins = <1 RK_PB5 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};

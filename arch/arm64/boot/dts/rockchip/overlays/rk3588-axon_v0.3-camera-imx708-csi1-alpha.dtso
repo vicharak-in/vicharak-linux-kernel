@@ -12,30 +12,30 @@
 		title = "Enable RasPi Camera V3 (IMX708) on CSI1 Alpha Axon V0.3";
 		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
 		category = "camera";
-		exclusive = "cam5", "imx708_6_1a", "csi2_dphy4", "mipi4_csi2", \
+		exclusive = "cam4", "imx708_6_1a", "csi2_dphy4", "mipi4_csi2", \
 			    "rkcif_mipi_lvds4", "rkcif_mipi_lvds4_sditf", \
-			    "rkisp1_vir1", "cam5_vcm_0c";
+			    "rkisp1_vir1", "cam4_vcm_0c";
 		description = "Enables IMX708 based RaspberryPi Camera V3 on
-\t\tVicharak Axon at I2C 6 bus address 1a on dphy1";
+\t\tVicharak Axon at I2C 6 bus address 1a on dphy4";
 	};
 
-	cam5_imx708_pwdn_gpio: cam5-pwdn-gpio {
+	cam4_imx708_pwdn_gpio: cam4-pwdn-gpio {
 		status = "okay";
 		compatible = "regulator-fixed";
-		regulator-name = "cam5_pwdn_gpio";
+		regulator-name = "cam4_pwdn_gpio";
 		regulator-always-on;
 		regulator-boot-on;
 		enable-active-high;
 		gpio = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&cam5_pwdn_gpio>;
+		pinctrl-0 = <&cam4_pwdn_gpio>;
 	};
 	
-	clk_cam5_24m: external-cam5-clock-24m {
+	clk_cam4_24m: external-cam4-clock-24m {
 		status = "okay";
 		compatible = "fixed-clock";
 		clock-frequency = <24000000>;
-		clock-output-names = "clk_cam5_24m";
+		clock-output-names = "clk_cam4_24m";
 		#clock-cells = <0>;
 	};
 };
@@ -45,30 +45,30 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	
-	cam5_vcm_0c: cam5-vcm@0c {
+	cam4_vcm_0c: cam4-vcm@0c {
 		compatible = "dongwoon,dw9807-vcm";
 		reg = <0x0c>;
 		status = "okay";
 	};
 
-	cam5_imx708_1a: cam5-imx708@1a {
+	cam4_imx708_1a: cam4-imx708@1a {
 		status = "okay";
 		compatible = "sony,imx708";
 		reg = <0x1a>;
 
-		clocks = <&clk_cam5_24m>;
+		clocks = <&clk_cam4_24m>;
 		clock-names = "xclk";
 
-		rockchip,camera-module-index = <5>;
+		rockchip,camera-module-index = <4>;
 		rockchip,camera-module-facing = "front";
 		rockchip,camera-module-name = "rpi-camera-v3";
 		rockchip,camera-module-lens-name = "default";
 
-		lens-focus = <&cam5_vcm_0c>;
+		lens-focus = <&cam4_vcm_0c>;
 
 		port {
-			cam5_imx708_out0: endpoint {
-				remote-endpoint = <&mipidphy4_in_ucam5>;
+			cam4_imx708_out0: endpoint {
+				remote-endpoint = <&mipidphy4_in_ucam4>;
 				link-frequencies = /bits/ 64 <450000000>;
 				data-lanes = <1 2>;
 			};
@@ -88,9 +88,9 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			mipidphy4_in_ucam5: endpoint@1 {
+			mipidphy4_in_ucam4: endpoint@1 {
 				reg = <1>;
-				remote-endpoint = <&cam5_imx708_out0>;
+				remote-endpoint = <&cam4_imx708_out0>;
 				data-lanes = <1 2>;
 			};
 		};
@@ -191,7 +191,7 @@
 
 &pinctrl {
 	camera {
-		cam5_pwdn_gpio: cam5-pwdn-gpio {
+		cam4_pwdn_gpio: cam4-pwdn-gpio {
 			rockchip,pins = <1 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
