@@ -1,0 +1,189 @@
+// SPDX-License-Identifier: GPL-2.0+
+// Copyright (C) 2026 Vicharak Computers PVT LTD
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+&{/} {
+	metadata {
+		title = "Enable 8.3MP Camera (IMX415) on CSI1 Alpha Axon V0.3";
+		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+		category = "camera";
+		exclusive = "cam4", "imx415_6_37", "csi2_dphy4", "mipi4_csi2", \
+			    "rkcif_mipi_lvds4", "rkcif_mipi_lvds4_sditf", \
+			    "rkisp1_vir1";
+		description = "Enables IMX415 based 8.3MP Camera on
+\t\tVicharak Axon at I2C 6 bus address 37 on dphy4";
+	};
+
+	cam4_imx415_pwdn_gpio: cam4-pwdn-gpio {
+		status = "okay";
+		compatible = "regulator-fixed";
+		regulator-name = "cam4_pwdn_gpio";
+		regulator-always-on;
+		regulator-boot-on;
+		enable-active-high;
+		gpio = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam4_pwdn_gpio>;
+	};
+
+	clk_cam4_27m: external-cam4-clock-27m {
+		status = "okay";
+		compatible = "fixed-clock";
+		clock-frequency = <27000000>;
+		clock-output-names = "clk_cam4_27m";
+		#clock-cells = <0>;
+	};
+};
+
+&i2c6 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	
+	cam4_imx415_37: cam4-imx415@37 {
+		status = "okay";
+		compatible = "sony,imx415";
+		reg = <0x37>;
+
+		clocks = <&clk_cam4_27m>;
+		clock-names = "xvclk";
+
+		rockchip,camera-module-index = <4>;
+		rockchip,camera-module-facing = "front";
+		rockchip,camera-module-name = "RADXA-CAMERA-4K";
+		rockchip,camera-module-lens-name = "DEFAULT";
+
+		port {
+			cam4_imx415_out0: endpoint {
+				remote-endpoint = <&mipidphy4_in_ucam4>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+};
+
+&csi2_dphy4 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipidphy4_in_ucam4: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&cam4_imx415_out0>;
+				data-lanes = <1 2>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csidphy4_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&mipi4_csi2_input>;
+			};
+		};
+	};
+};
+
+&mipi4_csi2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi4_csi2_input: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&csidphy4_out>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi4_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi4_in0>;
+			};
+		};
+	};
+};
+
+&rkcif {
+	status = "okay";
+};
+
+&rkcif_mipi_lvds4 {
+	status = "okay";
+
+	port {
+		cif_mipi4_in0: endpoint {
+			remote-endpoint = <&mipi4_csi2_output>;
+		};
+	};
+};
+
+&rkcif_mipi_lvds4_sditf {
+	status = "okay";
+
+	port {
+		mipi_lvds4_sditf: endpoint {
+			remote-endpoint = <&isp1_vir1>;
+		};
+	};
+};
+
+&rkcif_mmu {
+	status = "okay";
+};
+
+&rkisp1 {
+	status = "okay";
+};
+
+&isp1_mmu {
+	status = "okay";
+};
+
+&rkisp1_vir1 {
+	status = "okay";
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		isp1_vir1: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&mipi_lvds4_sditf>;
+		};
+	};
+};
+
+&pinctrl {
+	camera {
+		cam4_pwdn_gpio: cam4-pwdn-gpio {
+			rockchip,pins = <1 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+};

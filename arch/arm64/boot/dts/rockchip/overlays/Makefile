@@ -40,6 +40,10 @@ dtbo-$(CONFIG_BOARD_VICHARAK_AXON) += \
 	rk3588-axon_v0.3-camera-imx219-csi1-alpha.dtbo \
 	rk3588-axon_v0.3-camera-imx219-dphy-rx0-alpha.dtbo \
 	rk3588-axon_v0.3-camera-imx219-dphy-rx1-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx415-csi0-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx415-csi1-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx415-dphy-rx0-alpha.dtbo \
+	rk3588-axon_v0.3-camera-imx415-dphy-rx1-alpha.dtbo \
 	rk3588-axon_v0.3-camera-imx519-csi0-alpha.dtbo \
 	rk3588-axon_v0.3-camera-imx519-csi1-alpha.dtbo \
 	rk3588-axon_v0.3-camera-imx519-dphy-rx0-alpha.dtbo \
