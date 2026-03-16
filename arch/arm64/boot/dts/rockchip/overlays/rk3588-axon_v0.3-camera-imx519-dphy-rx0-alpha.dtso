@@ -12,30 +12,30 @@
 		title = "Enable Arducam 16MP Camera (IMX519) on dphy RX0 Alpha Axon V0.3";
 		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
 		category = "camera";
-		exclusive = "cam2", "imx519_2_1a", "csi2_dcphy0", "mipi0_csi2", \
+		exclusive = "cam0", "imx519_2_1a", "csi2_dcphy0", "mipi0_csi2", \
 			    "rkcif_mipi_lvds", "rkcif_mipi_lvds_sditf", \
-			    "rkisp0_vir0", "cam2_vcm_0c";
+			    "rkisp0_vir0", "cam0_vcm_0c";
 		description = "Enables IMX519 based Arducam 16MP Camera on
 \t\tVicharak Axon at I2C 2 bus address 1a on dphy RX0";
 	};
 
-	cam2_imx519_pwdn_gpio: cam2-pwdn-gpio {
+	cam0_imx519_pwdn_gpio: cam0-pwdn-gpio {
 		status = "okay";
 		compatible = "regulator-fixed";
-		regulator-name = "cam2_pwdn_gpio";
+		regulator-name = "cam0_pwdn_gpio";
 		regulator-always-on;
 		regulator-boot-on;
 		enable-active-high;
 		gpio = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&cam2_pwdn_gpio>;
+		pinctrl-0 = <&cam0_pwdn_gpio>;
 	};
 	
-	clk_cam2_24m: external-cam2-clock-24m {
+	clk_cam0_24m: external-cam0-clock-24m {
 		status = "okay";
 		compatible = "fixed-clock";
 		clock-frequency = <24000000>;
-		clock-output-names = "clk_cam2_24m";
+		clock-output-names = "clk_cam0_24m";
 		#clock-cells = <0>;
 	};
 };
@@ -46,30 +46,30 @@
 	#size-cells = <0>;
 	pinctrl-0 = <&i2c2m4_xfer>;
 	
-	cam2_vcm_0c: cam2-vcm@0c {
+	cam0_vcm_0c: cam0-vcm@0c {
 		compatible = "asahi-kasei,ak7375";
 		status = "okay";
 		reg = <0x0c>;
 	};
 
-	cam2_imx519_1a: cam2-imx519@1a {
+	cam0_imx519_1a: cam0-imx519@1a {
 		status = "okay";
 		compatible = "sony,imx519";
 		reg = <0x1a>;
 
-		clocks = <&clk_cam2_24m>;
+		clocks = <&clk_cam0_24m>;
 		clock-names = "xclk";
 
-		rockchip,camera-module-index = <2>;
+		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "front";
 		rockchip,camera-module-name = "arducam";
 		rockchip,camera-module-lens-name = "default";
 
-		lens-focus = <&cam2_vcm_0c>;
+		lens-focus = <&cam0_vcm_0c>;
 
 		port {
-			cam2_imx519_out0: endpoint {
-				remote-endpoint = <&mipidcphy0_in_ucam2>;
+			cam0_imx519_out0: endpoint {
+				remote-endpoint = <&mipidcphy0_in_ucam0>;
 				link-frequencies = /bits/ 64 <408000000>;
 				data-lanes = <1 2>;
 			};
@@ -89,9 +89,9 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			mipidcphy0_in_ucam2: endpoint@1 {
+			mipidcphy0_in_ucam0: endpoint@1 {
 				reg = <1>;
-				remote-endpoint = <&cam2_imx519_out0>;
+				remote-endpoint = <&cam0_imx519_out0>;
 				data-lanes = <1 2>;
 			};
 		};
@@ -192,7 +192,7 @@
 
 &pinctrl {
 	camera {
-		cam2_pwdn_gpio: cam2-pwdn-gpio {
+		cam0_pwdn_gpio: cam0-pwdn-gpio {
 			rockchip,pins = <1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
