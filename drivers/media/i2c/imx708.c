@@ -694,11 +694,11 @@ static const struct imx708_mode supported_modes[] = {
 	{
 		.bus_fmt = MEDIA_BUS_FMT_SRGGB10_1X10,
 		/* regular 2x2 binned. */
-		.width = 1920,
-		.height = 1080,
+		.width = 2304,
+		.height = 1296,
 		.max_fps = {
 			.numerator = 10000,
-			.denominator = 660000,
+			.denominator = 560000,
 		},
 		.line_length_pix = 0x1e90,
 		.crop = {
