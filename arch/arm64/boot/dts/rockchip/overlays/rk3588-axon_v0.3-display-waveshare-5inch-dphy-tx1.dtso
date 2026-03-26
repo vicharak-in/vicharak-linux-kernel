@@ -1,0 +1,141 @@
+//SPDX-License-Identifier: GPL-2..0+
+// Copyright (C) 2024 Vicharak Computers PVT LTD
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/display/drm_mipi_dsi.h>
+
+&{/} {
+	metadata {
+		title = "Enable Waveshare 5inch DSI LCD DPHY TX1 Axon V0.3";
+		compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+		category = "display";
+		exclusive = "dsi1", "vp3", "dsi1_in_vp3", "vp3_out_dsi1";
+		description = "Enables support for the Waveshare 5-inch LCD screen for DSI1 on\n Vicharak Axon at I2C 5 bus address 45 for regulator and 38 for touchscreen.\n";
+	};
+
+	vcc_mipidcphy1: vcc-mipi-dcphy1 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_mipidcphy1";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&pca9554 7 GPIO_ACTIVE_HIGH>;
+		regulator-always-on;
+		regulator-boot-on;
+		enable-active-high;
+		vin-supply = <&vcc1_5v0>;
+		status = "okay";
+	};
+};
+
+&mipi_dcphy1 {
+	status = "okay";
+};
+
+&dsi1 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	panel: panel-dsi-generic@0 {
+		compatible = "simple-panel-dsi";
+		reg = <0>;
+		power-supply = <&reg_display>;
+		backlight = <&reg_display>;
+		status = "okay";
+
+		width-mm = <0>;
+		height-mm = <0>;
+
+		dsi,format = <MIPI_DSI_FMT_RGB888>;
+		dsi,lanes = <1>;
+		dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
+			  MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_VIDEO_HSE)>;
+
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing0 {
+				clock-frequency = <27777000>;
+				hactive = <800>;
+				vactive = <480>;
+
+				hback-porch = <45>;
+				hfront-porch = <59>;
+
+				vback-porch = <22>;
+				vfront-porch = <7>;
+
+				hsync-len = <2>;
+				vsync-len = <2>;
+			};
+		};
+
+		ports {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port@0 {
+                reg = <0>;
+                panel_in_dsi: endpoint {
+                    remote-endpoint = <&dsi_out_panel>;
+                };
+            };
+        };
+	};
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@1 {
+			reg = <1>;
+
+			dsi_out_panel: endpoint {
+				remote-endpoint = <&panel_in_dsi>;
+			};
+		};
+	};
+};
+
+&dsi1_in_vp2 {
+	status = "disabled";
+};
+
+&dsi1_in_vp3 {
+	status = "okay";
+};
+
+&vp3_out_dsi1 {
+	status = "okay";
+};
+
+&route_dsi1 {
+	status = "okay";
+	connect = <&vp3_out_dsi1>;
+};
+
+&i2c5 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	reg_display: reg_display@45 {
+		compatible = "raspberrypi,7inch-touchscreen-panel-regulator";
+		reg = <0x45>;
+		status = "okay";
+	};
+
+	ft5406: ts@38 {
+		compatible = "edt,edt-ft5506";
+		reg = <0x38>;
+		vcc-supply = <&reg_display>;
+		touchscreen-size-x = <800>;
+		touchscreen-size-y = <480>;
+		touchscreen-inverted-x;
+		touchscreen-inverted-y;
+		status = "okay";
+	};
+};

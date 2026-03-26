@@ -58,6 +58,8 @@ dtbo-$(CONFIG_BOARD_VICHARAK_AXON) += \
 	rk3588-axon_v0.3-camera-ov5647-dphy-rx1-alpha.dtbo \
 	rk3588-axon_v0.3-display-et060fh02-6inch-dphy-tx0.dtbo \
 	rk3588-axon_v0.3-display-et060fh02-6inch-dphy-tx1.dtbo \
+	rk3588-axon_v0.3-display-waveshare-5inch-dphy-tx0.dtbo \
+	rk3588-axon_v0.3-display-waveshare-5inch-dphy-tx1.dtbo \
 	rk3588-axon_v0.3-display-waveshare-4inch-dphy-tx0.dtbo \
 	rk3588-axon_v0.3-display-waveshare-4inch-dphy-tx1.dtbo
 
