@@ -18,9 +18,9 @@
 		description = "Enables support for the ET060FH02 6-inch AMOLED DSI LCD screen (CH13721C).\nPlease note that HDMI/DP output will be disabled as a result.";
 	};
 
-	vcc_mipidcphy0: vcc-mipi-dcphy0 {
+	vcc_mipidcphy1: vcc-mipi-dcphy1 {
 		compatible = "regulator-fixed";
-		regulator-name = "vcc_mipidcphy0";
+		regulator-name = "vcc_mipidcphy1";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		gpio = <&pca9554 7 GPIO_ACTIVE_HIGH>;
