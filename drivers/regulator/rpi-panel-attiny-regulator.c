@@ -403,7 +403,18 @@ static struct i2c_driver attiny_regulator_driver = {
 	.remove	= attiny_i2c_remove,
 };
 
-module_i2c_driver(attiny_regulator_driver);
+static int __init attiny_regulator_driver_init(void)
+{
+	return i2c_add_driver(&attiny_regulator_driver);
+}
+
+static void __exit attiny_regulator_driver_exit(void)
+{
+	i2c_del_driver(&attiny_regulator_driver);
+}
+
+late_initcall(attiny_regulator_driver_init);
+module_exit(attiny_regulator_driver_exit);
 
 MODULE_AUTHOR("Marek Vasut <marex@denx.de>");
 MODULE_DESCRIPTION("Regulator device driver for Raspberry Pi 7-inch touchscreen");
