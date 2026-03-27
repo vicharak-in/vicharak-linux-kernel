@@ -243,7 +243,6 @@
 	vbus5v0_typec0: vbus5v0-typec0-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "vbus5v0_typec0";
-		regulator-boot-on;
 		enable-active-high;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
@@ -254,7 +253,6 @@
 	vbus5v0_typec1: vbus5v0-typec1-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "vbus5v0_typec1";
-		regulator-boot-on;
 		enable-active-high;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
