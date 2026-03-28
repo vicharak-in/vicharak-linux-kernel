@@ -77,9 +77,9 @@
 #define IMX415_XVCLK_FREQ_37M		37125000
 #define IMX415_XVCLK_FREQ_27M		27000000
 
-/* TODO: Get the real chip id from reg */
-#define CHIP_ID				0xE0
-#define IMX415_REG_CHIP_ID		0x311A
+#define IMX415_SENSOR_INFO_REG		0x3F12
+#define IMX415_SENSOR_INFO_MASK		0x0FFF
+#define IMX415_SENSOR_INFO_CHIP_ID	0x0514
 
 #define IMX415_REG_CTRL_MODE		0x3000
 #define IMX415_MODE_SW_STANDBY		BIT(0)
@@ -2897,28 +2897,72 @@ err_free_handler:
 	return ret;
 }
 
+static int imx415_wakeup_for_identify(struct imx415* imx415,
+                                      struct i2c_client *client)
+{
+	int ret;
+
+	ret = imx415_write_reg(client, IMX415_REG_CTRL_MODE,
+	                       IMX415_REG_VALUE_08BIT,
+	                       IMX415_MODE_STREAMING);
+
+	if (ret)
+		return ret;
+
+	/*
+	 * Datasheet standby section uses 24 ms internal regulator
+	 * stabilization after standby cancel, but upstream uses a larger
+	 * guard time (80 ms) for reliability.
+	 */
+
+	msleep(80);
+
+	return 0;
+}
+
 static int imx415_check_sensor_id(struct imx415 *imx415,
 				  struct i2c_client *client)
 {
 	struct device *dev = &imx415->client->dev;
-	u32 id = 0;
-	int ret;
+	u32 model, id;
+	u32 val = 0;
+	int ret = 0;
 
 	if (imx415->is_thunderboot) {
 		dev_info(dev, "Enable thunderboot mode, skip sensor id check\n");
 		return 0;
 	}
 
-	ret = imx415_read_reg(client, IMX415_REG_CHIP_ID,
-			      IMX415_REG_VALUE_08BIT, &id);
-	if (id != CHIP_ID) {
-		dev_err(dev, "Unexpected sensor id(%06x), ret(%d)\n", id, ret);
-		return -ENODEV;
+	ret = imx415_wakeup_for_identify(imx415, client);
+	if (ret) {
+		dev_err(dev, "failed to get sensor out of standby: %d\n", ret);
+		return ret;
 	}
 
-	dev_info(dev, "Detected imx415 id %06x\n", CHIP_ID);
+	ret = imx415_read_reg(client, IMX415_SENSOR_INFO_REG,
+	                      IMX415_REG_VALUE_16BIT, &model);
+	if (ret) {
+		dev_err(dev, "failed to read sensor information: %d\n", ret);
+		goto done;
+	}
 
-	return 0;
+	val = ((u16)(model & 0xff) << 8) | (u16)((model >> 8) & 0xff);
+	id = val & IMX415_SENSOR_INFO_MASK;
+
+	if (id != IMX415_SENSOR_INFO_CHIP_ID) {
+		dev_err(dev, "invalid device id 0x%04x\n", id);
+		ret = -ENODEV;
+		goto done;
+	}
+
+	dev_info(dev, "Detected IMX415 image sensor\n");
+
+done:
+	/* Return sensor to standby */
+	imx415_write_reg(client, IMX415_REG_CTRL_MODE,
+	                 IMX415_REG_VALUE_08BIT,
+	                 IMX415_MODE_SW_STANDBY);
+	return ret;
 }
 
 static int imx415_configure_regulators(struct imx415 *imx415)
