@@ -55,8 +55,8 @@
 
 		rockchip,camera-module-index = <4>;
 		rockchip,camera-module-facing = "front";
-		rockchip,camera-module-name = "RADXA-CAMERA-4K";
-		rockchip,camera-module-lens-name = "DEFAULT";
+		rockchip,camera-module-name = "default";
+		rockchip,camera-module-lens-name = "default";
 
 		port {
 			cam4_imx415_out0: endpoint {
