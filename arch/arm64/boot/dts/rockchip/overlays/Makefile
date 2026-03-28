@@ -4,6 +4,7 @@ dtbo-$(CONFIG_BOARD_VICHARAK_VAAMAN) += \
 	rk3399-vaaman-camera-imx219.dtbo \
 	rk3399-vaaman-camera-ov5647.dtbo \
 	rk3399-vaaman-dsi-waveshare.dtbo \
+	rk3399-vaaman-dsi-waveshare-5inch-display.dtbo \
 	rk3399-vaaman-dwc3-0-host.dtbo \
 	rk3399-vaaman-dwc3-0-otg.dtbo \
 	rk3399-vaaman-i2c2.dtbo \
