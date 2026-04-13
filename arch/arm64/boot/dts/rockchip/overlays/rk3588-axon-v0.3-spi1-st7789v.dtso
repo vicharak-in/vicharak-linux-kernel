@@ -1,0 +1,61 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+&{/} {
+    metadata {
+        title = "Enable SPI1 display ST7789V support on 30 Pin GPIO Header Axon V0.3";
+        compatible = "vicharak,rk3588-axon", "rockchip,rk3588";
+        category = "display";
+        exclusive = "spi1", "GPIO1_D0", "GPIO1_D1", "GPIO1_D2", "GPIO1_D3",
+                    "GPIO2_C0", "GPIO2_C1";
+        description = "Enable SPI1 support for ST7789V 1.69inch TFT Display (240x280) on GPIO Header\n\tPin 17: MISO\n\tPin 18: MOSI\n\tPin 19: CS\n\tPin 20:  SCLK\n\tPin 9: GPIO2_C0 DC\n\tPin 11: GPIO2_C1 RESET\n\tBLK:    3.3V (always on)";
+    };
+};
+
+&spi1 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    max-freq = <50000000>;
+    dma-names;
+
+    st7789v: st7789v@0 {
+        compatible = "sitronix,st7789v";
+        reg = <0>;
+        spi-max-frequency = <30000000>;     /* ST7789V write cycle min 16ns  ~60MHz theoretical,
+                                               but 30 MHz is safe for long wires / breadboard */
+
+        dc-gpios    = <&gpio2 RK_PC0 GPIO_ACTIVE_HIGH>;
+        reset-gpios = <&gpio2 RK_PC1 GPIO_ACTIVE_HIGH>;
+
+        pinctrl-names = "default";
+        pinctrl-0     = <&dc_st7789_gpio &reset_st7789_gpio>;
+
+        /* Display geometry */
+        width    = <240>;
+        height   = <280>;
+        rotate   = <0>;         /* 0 / 90 / 180 / 270 */
+
+        fps      = <30>;
+        buswidth = <8>;
+        /* bgr = <0>; */          /* RGB order leave at default (0) */
+        debug = <0>;
+    };
+};
+
+&pinctrl {
+    st7789v {
+        dc_st7789_gpio: dc-st7789-gpio {
+            rockchip,pins =
+                <2 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
+        };
+
+        reset_st7789_gpio: reset-st7789-gpio {
+            rockchip,pins =
+                <2 RK_PC1 RK_FUNC_GPIO &pcfg_pull_none>;
+        };
+    };
+};
