@@ -34,9 +34,16 @@ void handle_bad_irq(struct irq_desc *desc)
 {
 	unsigned int irq = irq_desc_get_irq(desc);
 
+	/* Let the in-band stage report the issue. */
+	if (on_pipeline_entry()) {
+		ack_bad_irq(irq);
+		return;
+	}
+
 	print_irq_desc(irq, desc);
 	kstat_incr_irqs_this_cpu(desc);
-	ack_bad_irq(irq);
+	if (!irqs_pipelined())
+		ack_bad_irq(irq);
 }
 EXPORT_SYMBOL_GPL(handle_bad_irq);
 
@@ -211,6 +218,38 @@ irqreturn_t handle_irq_event(struct irq_desc *desc)
 
 	raw_spin_lock(&desc->lock);
 	irqd_clear(&desc->irq_data, IRQD_IRQ_INPROGRESS);
+	return ret;
+}
+
+/*
+ * forward_irq_event - When pipelining is enabled, this call forwards
+ * a device-originated IRQ event to the in-band action handlers after
+ * out-of-band handling. Otherwise, this is a strict alias to
+ * handle_irq_event().
+ *
+ * IRQ forwarding is meant as a way to implement a two-step handling
+ * of any interrupt event: initially from the out-of-band stage where
+ * proper ack is sent to the device by the associated action
+ * handler(s), deferring the final handling to the same handler(s)
+ * called from the in-band stage eventually. Logically speaking, the
+ * interrupt is no more in progress once the out-of-band handler has
+ * returned.
+ *
+ * NOTE: per-cpu events can be forwarded as well, but we may invoke
+ * handle_irq_event_percpu() directly to achieve this.
+ */
+irqreturn_t forward_irq_event(struct irq_desc *desc)
+{
+	irqreturn_t ret;
+
+	if (irqs_pipelined()) {
+		raw_spin_unlock(&desc->lock);
+		ret = handle_irq_event_percpu(desc);
+		raw_spin_lock(&desc->lock);
+	} else {
+		ret = handle_irq_event(desc);
+	}
+
 	return ret;
 }
 

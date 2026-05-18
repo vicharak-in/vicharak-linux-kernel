@@ -14,6 +14,7 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/hardirq.h>
+#include <linux/irqstage.h>
 #include <linux/kdebug.h>
 #include <linux/module.h>
 #include <linux/kexec.h>
@@ -206,7 +207,7 @@ static int __die(const char *str, long err, struct pt_regs *regs)
 	return ret;
 }
 
-static DEFINE_RAW_SPINLOCK(die_lock);
+static DEFINE_HARD_SPINLOCK(die_lock);
 
 /*
  * This function is protected against re-entrancy.
@@ -381,7 +382,7 @@ void arm64_skip_faulting_instruction(struct pt_regs *regs, unsigned long size)
 }
 
 static LIST_HEAD(undef_hook);
-static DEFINE_RAW_SPINLOCK(undef_lock);
+static DEFINE_HARD_SPINLOCK(undef_lock);
 
 void register_undef_hook(struct undef_hook *hook)
 {
@@ -584,10 +585,13 @@ static void user_cache_maint_handler(unsigned long esr, struct pt_regs *regs)
 		return;
 	}
 
-	if (ret)
+	if (ret) {
+		mark_trap_entry(ARM64_TRAP_ACCESS, regs);
 		arm64_notify_segfault(tagged_address);
-	else
+		mark_trap_exit(ARM64_TRAP_ACCESS, regs);
+	} else {
 		arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
+	}
 }
 
 static void ctr_read_handler(unsigned long esr, struct pt_regs *regs)
@@ -632,8 +636,11 @@ static void mrs_handler(unsigned long esr, struct pt_regs *regs)
 	rt = ESR_ELx_SYS64_ISS_RT(esr);
 	sysreg = esr_sys64_to_sysreg(esr);
 
-	if (do_emulate_mrs(regs, sysreg, rt) != 0)
+	if (do_emulate_mrs(regs, sysreg, rt) != 0) {
+		mark_trap_entry(ARM64_TRAP_ACCESS, regs);
 		force_signal_inject(SIGILL, ILL_ILLOPC, regs->pc, 0);
+		mark_trap_exit(ARM64_TRAP_ACCESS, regs);
+	}
 }
 
 static void wfi_handler(unsigned long esr, struct pt_regs *regs)
@@ -874,11 +881,13 @@ void bad_el0_sync(struct pt_regs *regs, int reason, unsigned long esr)
 {
 	unsigned long pc = instruction_pointer(regs);
 
+	mark_trap_entry(ARM64_TRAP_ACCESS, regs);
 	current->thread.fault_address = 0;
 	current->thread.fault_code = esr;
 
 	arm64_force_sig_fault(SIGILL, ILL_ILLOPC, pc,
 			      "Bad EL0 synchronous exception");
+	mark_trap_exit(ARM64_TRAP_ACCESS, regs);
 }
 
 #ifdef CONFIG_VMAP_STACK
