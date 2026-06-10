@@ -89,6 +89,14 @@
 	status = "okay";
 };
 
+&av1d_mmu {
+	status = "okay";
+};
+
+&avsd {
+	status = "okay";
+};
+
 &cpu_b0 {
 	cpu-supply = <&vdd_cpu_big0_s0>;
 	mem-supply = <&vdd_cpu_big0_mem_s0>;
@@ -493,7 +501,6 @@
 	status = "okay";
 };
 
-
 &sdio {
 	max-frequency = <150000000>;
 	no-sd;
@@ -509,6 +516,17 @@
 	pinctrl-0 = <&sdiom0_pins>;
 	vmmc-supply = <&vcc_3v3_s3>;
 	vqmmc-supply = <&vcc_1v8_s3>;
+};
+
+&vdpu {
+	status = "okay";
+};
+
+&vdpu_mmu {
+	status = "okay";
+};
+
+&vepu {
 	status = "okay";
 };
 
