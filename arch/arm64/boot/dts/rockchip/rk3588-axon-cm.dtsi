@@ -224,6 +224,26 @@
 	status = "okay";
 };
 
+&rga2 {
+	status = "okay";
+};
+
+&rga3_core0 {
+	status = "okay";
+};
+
+&rga3_0_mmu {
+	status = "okay";
+};
+
+&rga3_core1 {
+	status = "okay";
+};
+
+&rga3_1_mmu {
+	status = "okay";
+};
+
 &rknpu {
 	rknpu-supply = <&vdd_npu_s0>;
 	mem-supply = <&vdd_npu_mem_s0>;
