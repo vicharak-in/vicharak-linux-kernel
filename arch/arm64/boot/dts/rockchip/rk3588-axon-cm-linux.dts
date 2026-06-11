@@ -11,5 +11,9 @@
 / {
 	model = "Vicharak RK3588 AXON V0.1 R0.2 LINUX";
 	compatible = "vicharak,rk3588-axon-cm", "rockchip,rk3588";
-};
 
+	/delete-node/ chosen;
+	chosen: chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 irqchip.gicv3_pseudo_nmi=0";
+	};
+};
