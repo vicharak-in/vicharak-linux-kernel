@@ -518,6 +518,12 @@
 	vqmmc-supply = <&vcc_1v8_s3>;
 };
 
+&uart9 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart9m0_xfer &uart9m0_ctsn>;
+	status = "okay";
+};
+
 &vdpu {
 	status = "okay";
 };
