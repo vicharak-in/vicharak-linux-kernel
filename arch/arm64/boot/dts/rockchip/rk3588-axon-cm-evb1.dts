@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2026 Vicharak Computers LLP
+
+ Axon CM Evolution Board 1 (EVB1) Includes:
+ - 1x HDMI Tx0
+ - 1x USB 2.0
+ - 1x PCIe 2.0 on B Key
+ - 1x USB 3.0 on B Key
+ - 1x Audio Jack ES8388
+ - 2x Audio Speaker ( Left and Right )
+ - 1x Ethernet RGMII
+ - 1x MIPI DPHY DSI
+ - 1x Controller area network (CAN)
+ - 1x Button each for POWER, RESET and BOOT
+ - 1x Sim Card Slot
+ - 1x Battery Charging IC (BQ25792RQMR)
+ - 1x 1.8v connector
+ - 1x 3.3v connector
+ - 1x 5v connector
+ */
+
+/dts-v1/;
+
+#include "rk3588-axon-cm.dtsi"
+#include "rk3588-linux.dtsi"
+
+/ {
+	model = "Vicharak RK3588 AXON CM EVB1 V0.1 R0.2 LINUX";
+	compatible = "vicharak,rk3588-axon-cm", "rockchip,rk3588";
+
+	/delete-node/ chosen;
+	chosen: chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 irqchip.gicv3_pseudo_nmi=0";
+	};
+};
