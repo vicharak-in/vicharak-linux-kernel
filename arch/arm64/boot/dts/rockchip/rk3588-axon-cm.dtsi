@@ -5,6 +5,7 @@
 
 #include "rk3588.dtsi"
 #include "rk3588-axon-cm-rk806-single.dtsi"
+#include <dt-bindings/pinctrl/rockchip.h>
 
 / {
 	compatible = "vicharak,rk3588-axon-cm", "rockchip,rk3588";
@@ -137,6 +138,19 @@
 			regulator-off-in-suspend;
 		};
 	};
+
+	hym8563: rtc@51 {
+		compatible = "haoyu,hym8563";
+		reg = <0x51>;
+		#clock-cells = <0>;
+		clock-output-names = "hym8563";
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PB0 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&rtc_int>;
+		wakeup-source;
+		status = "okay";
+	};
 };
 
 &i2c1 {
@@ -226,6 +240,15 @@
 
 &mpp_srv {
 	status = "okay";
+};
+
+&pinctrl {
+	hym8563 {
+		rtc_int: rtc-int {
+			rockchip,pins =
+				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
 };
 
 &rga2 {
