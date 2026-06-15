@@ -64,6 +64,9 @@ dtbo-$(CONFIG_BOARD_VICHARAK_AXON) += \
 	rk3588-axon_v0.3-display-waveshare-4inch-dphy-tx0.dtbo \
 	rk3588-axon_v0.3-display-waveshare-4inch-dphy-tx1.dtbo
 
+dtbo-$(CONFIG_BOARD_VICHARAK_AXON_CM) += \
+	rk3588-axon-cm-evb1_v0.1-display-waveshare-4inch-dphy-tx0.dtbo
+
 dtbotxt-$(CONFIG_ARCH_ROCKCHIP) += \
 	README.rockchip-overlays
 
