@@ -24,6 +24,7 @@
 
 #include "rk3588-axon-cm.dtsi"
 #include "rk3588-linux.dtsi"
+#include <dt-bindings/input/rk-input.h>
 
 / {
 	model = "Vicharak RK3588 AXON CM EVB1 V0.1 R0.2 LINUX";
@@ -32,6 +33,42 @@
 	/delete-node/ chosen;
 	chosen: chosen {
 		bootargs = "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 irqchip.gicv3_pseudo_nmi=0";
+	};
+
+	es8388_sound: es8388-sound {
+		compatible = "rockchip,multicodecs-card";
+		hp-con-gpio = <&gpio1 RK_PD5 GPIO_ACTIVE_HIGH>;
+		hp-det-gpio = <&gpio1 RK_PC4 GPIO_ACTIVE_HIGH>;
+		spk-con-gpio = <&gpio1 RK_PC6 GPIO_ACTIVE_HIGH>;
+		io-channel-names = "adc-detect";
+		io-channels = <&saradc 3>;
+		keyup-threshold-microvolt = <1800000>;
+		poll-interval = <100>;
+		rockchip,audio-routing =
+			"Headphone", "LOUT1",
+			"Headphone", "ROUT1",
+			"Speaker", "LOUT2",
+			"Speaker", "ROUT2",
+			"Headphone", "Headphone Power",
+			"Headphone", "Headphone Power",
+			"Speaker", "Speaker Power",
+			"Speaker", "Speaker Power",
+			"RINPUT1", "Headset Mic",
+			"RINPUT2", "Headset Mic";
+		rockchip,card-name = "rockchip-es8388";
+		rockchip,codec = <&es8388>;
+		rockchip,cpu = <&i2s0_8ch>;
+		rockchip,format = "i2s";
+		rockchip,mclk-fs = <256>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hp_det>;
+		status = "okay";
+
+		play-pause-key {
+			label = "playpause";
+			linux,code = <KEY_PLAYPAUSE>;
+			press-threshold-microvolt = <2000>;
+		};
 	};
 
 	pcie20_avdd0v85: pcie20-avdd0v85-regulator {
@@ -105,6 +142,36 @@
     status = "okay";
 };
 
+&i2c3 {
+	status = "okay";
+
+	es8388: es8388@11 {
+		#sound-dai-cells = <0>;
+		compatible = "everest,es8388", "everest,es8323";
+		reg = <0x11>;
+		clocks = <&mclkout_i2s0>;
+		clock-names = "mclk";
+		assigned-clocks = <&mclkout_i2s0>;
+		assigned-clock-rates = <12288000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2s0_mclk>;
+		DVDD-supply = <&vcc_1v8_s0>;
+		AVDD-supply = <&vcc_3v3_s0>;
+		PVDD-supply = <&vcc_1v8_s0>;
+		HPVDD-supply = <&vcc_3v3_s0>;
+		status = "okay";
+	};
+};
+
+&i2s0_8ch {
+	pinctrl-0 = <&i2s0_lrck
+				&i2s0_sclk
+				&i2s0_sdi0
+				&i2s0_sdo0>;
+
+	status = "okay";
+};
+
 &mdio1 {
     rgmii_phy: phy@1 {
         compatible = "ethernet-phy-ieee802.3-c22";
@@ -121,6 +188,13 @@
 };
 
 &pinctrl {
+	headphone {
+		hp_det: hp-det {
+			rockchip,pins =
+				<1 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
 	pcie2 {
 		pcie2_0_rst: pcie2-0-rst {
 			rockchip,pins =
@@ -137,6 +211,11 @@
 				<4 RK_PA1 4 &pcfg_pull_none>;
 		};
 	};
+};
+
+&saradc {
+	vref-supply = <&avcc_1v8_s0>;
+	status = "okay";
 };
 
 &u2phy3 {
