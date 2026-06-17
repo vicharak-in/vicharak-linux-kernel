@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2026 Vicharak Computers LLP
+ */
+
+/dts-v1/;
+
+#include "rk3588-axon-cm.dtsi"
+#include "rk3588-linux.dtsi"
+
+/ {
+	model = "Vicharak RK3588 AXON V0.1 R0.2 LINUX";
+	compatible = "vicharak,rk3588-axon-cm", "rockchip,rk3588";
+
+	/delete-node/ chosen;
+	chosen: chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 irqchip.gicv3_pseudo_nmi=0";
+	};
+};

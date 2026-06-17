@@ -289,6 +289,14 @@ config BOARD_VICHARAK_AXON
 	  This enables support for Vicharak Axon Board which is a single board
 	  computer based on high performance Rockchip RK3588 SoC.
 
+config BOARD_VICHARAK_AXON_CM
+	bool "Vicharak Axon CM based on Rockchip RK3588"
+	select ARCH_ROCKCHIP
+	select ARCH_VICHARAK
+	help
+	  This enables support for Vicharak Axon Compute Module, System-on-Module (SoM)
+	  based on the Rockchip RK3588 octa-core SoC.
+
 endmenu
 
 config ARCH_SEATTLE
