@@ -20,20 +20,11 @@
  - 1x 5v connector
  */
 
-/dts-v1/;
-
 #include "rk3588-axon-cm.dtsi"
 #include "rk3588-linux.dtsi"
 #include <dt-bindings/input/rk-input.h>
 
 / {
-	model = "Vicharak RK3588 AXON CM EVB1 V0.1 R0.2 LINUX";
-	compatible = "vicharak,rk3588-axon-cm", "rockchip,rk3588";
-
-	/delete-node/ chosen;
-	chosen: chosen {
-		bootargs = "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 irqchip.gicv3_pseudo_nmi=0";
-	};
 
 	es8388_sound: es8388-sound {
 		compatible = "rockchip,multicodecs-card";
