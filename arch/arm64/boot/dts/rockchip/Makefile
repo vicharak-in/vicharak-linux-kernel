@@ -10,7 +10,7 @@ dtb-$(CONFIG_BOARD_VICHARAK_AXON) += \
 
 dtb-$(CONFIG_BOARD_VICHARAK_AXON_CM) += \
 	rk3588-axon-cm-linux.dtb \
-	rk3588-axon-cm-evb1.dtb
+	rk3588-axon-cm-evb1-linux.dtb
 else
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-firefly-itx-3588j.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += px30-evb.dtb
