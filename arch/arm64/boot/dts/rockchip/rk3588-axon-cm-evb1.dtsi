@@ -52,7 +52,7 @@
 		rockchip,format = "i2s";
 		rockchip,mclk-fs = <256>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&hp_det>;
+		pinctrl-0 = <&hp_det &amp_ctrl>;
 		status = "okay";
 
 		play-pause-key {
@@ -179,6 +179,14 @@
 };
 
 &pinctrl {
+
+	amplifier_ctrl {
+		amp_ctrl: amp-ctrl {
+			rockchip,pins =
+				<4 RK_PD4 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+	};
+
 	headphone {
 		hp_det: hp-det {
 			rockchip,pins =
