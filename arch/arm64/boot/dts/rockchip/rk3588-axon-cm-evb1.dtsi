@@ -133,6 +133,23 @@
     status = "okay";
 };
 
+&hdmi0 {
+	enable-gpios = <&gpio1 RK_PB0 GPIO_ACTIVE_HIGH>;
+	cec-enable;
+	status = "okay";
+};
+
+&hdmi0_in_vp0 {
+	status = "okay";
+};
+
+&hdptxphy_hdmi0 {
+	status = "okay";
+};
+
+&vp0_out_hdmi0 {
+	status = "okay";
+};
 &i2c3 {
 	status = "okay";
 
