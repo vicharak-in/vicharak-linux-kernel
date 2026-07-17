@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Copyright (C) 2026 Vicharak Computers LLP
+ * Copyright (C) 2026 Vicharak Computers Pvt. Ltd.
  */
 
 #include "rk3588.dtsi"
@@ -79,6 +79,14 @@
 		WIFI,poweren_gpio = <&gpio2 RK_PB5 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
+};
+
+&av1d_mmu {
+	status = "okay";
+};
+
+&avsd {
+	status = "okay";
 };
 
 &av1d_mmu {
@@ -493,7 +501,6 @@
 	status = "okay";
 };
 
-
 &sdio {
 	max-frequency = <150000000>;
 	no-sd;
@@ -509,6 +516,23 @@
 	pinctrl-0 = <&sdiom0_pins>;
 	vmmc-supply = <&vcc_3v3_s3>;
 	vqmmc-supply = <&vcc_1v8_s3>;
+};
+
+&uart9 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart9m0_xfer &uart9m0_ctsn>;
+	status = "okay";
+};
+
+&vdpu {
+	status = "okay";
+};
+
+&vdpu_mmu {
+	status = "okay";
+};
+
+&vepu {
 	status = "okay";
 };
 

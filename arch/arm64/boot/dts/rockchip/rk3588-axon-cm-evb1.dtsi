@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Copyright (C) 2026 Vicharak Computers LLP
+ * Copyright (C) 2026 Vicharak Computers Pvt. Ltd.
 
  Axon CM Evolution Board 1 (EVB1) Includes:
  - 1x HDMI Tx0
@@ -52,7 +52,7 @@
 		rockchip,format = "i2s";
 		rockchip,mclk-fs = <256>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&hp_det>;
+		pinctrl-0 = <&hp_det &amp_ctrl>;
 		status = "okay";
 
 		play-pause-key {
@@ -133,6 +133,23 @@
     status = "okay";
 };
 
+&hdmi0 {
+	enable-gpios = <&gpio1 RK_PB0 GPIO_ACTIVE_HIGH>;
+	cec-enable;
+	status = "okay";
+};
+
+&hdmi0_in_vp0 {
+	status = "okay";
+};
+
+&hdptxphy_hdmi0 {
+	status = "okay";
+};
+
+&vp0_out_hdmi0 {
+	status = "okay";
+};
 &i2c3 {
 	status = "okay";
 
@@ -179,6 +196,14 @@
 };
 
 &pinctrl {
+
+	amplifier_ctrl {
+		amp_ctrl: amp-ctrl {
+			rockchip,pins =
+				<4 RK_PD4 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+	};
+
 	headphone {
 		hp_det: hp-det {
 			rockchip,pins =
@@ -209,12 +234,29 @@
 	status = "okay";
 };
 
+&u2phy2 {
+	status = "okay";
+};
+
+&u2phy2_host {
+	phy-supply = <&vcc5v0_usb20_host>;
+	status = "okay";
+};
+
 &u2phy3 {
 	status = "okay";
 };
 
 &u2phy3_host {
 	phy-supply = <&vcc5v0_usb20_host>;
+	status = "okay";
+};
+
+&usb_host0_ehci {
+	status = "okay";
+};
+
+&usb_host0_ohci {
 	status = "okay";
 };
 

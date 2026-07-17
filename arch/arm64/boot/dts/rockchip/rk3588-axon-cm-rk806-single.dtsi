@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Copyright (c) 2021 Rockchip Electronics Co., Ltd.
- * Copyright (C) 2023 Vicharak Computers LLP
+ * Copyright (C) 2026 Vicharak Computers Pvt. Ltd.
  */
 
 #include <dt-bindings/gpio/gpio.h>
