@@ -40,6 +40,7 @@
 #include <linux/timer.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
+#include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/pm_runtime.h>
 #include <linux/sched/mm.h>
@@ -69,6 +70,7 @@
 
 /* load interval: 1000ms */
 #define RGA_LOAD_INTERVAL_US 1000000
+#define RGA_LOAD_ACTIVE_MAX_US 5000000
 
 /* timer interval: 1000ms */
 #define RGA_TIMER_INTERVAL_NS 1000000000
@@ -87,7 +89,7 @@
 
 #define DRIVER_MAJOR_VERISON		1
 #define DRIVER_MINOR_VERSION		3
-#define DRIVER_REVISION_VERSION		4
+#define DRIVER_REVISION_VERSION		11
 #define DRIVER_PATCH_VERSION
 
 #define DRIVER_VERSION (STR(DRIVER_MAJOR_VERISON) "." STR(DRIVER_MINOR_VERSION) \
@@ -181,8 +183,11 @@ struct rga_dma_buffer {
 	 */
 	size_t offset;
 
-	/* The scheduler of the mapping */
-	struct rga_scheduler_t *scheduler;
+	/*
+	 * The device used by dma-buf mapping, which usually corresponds to the
+	 * default domain or the current device.
+	 */
+	struct device *map_dev;
 };
 
 struct rga_virt_addr {
@@ -191,6 +196,7 @@ struct rga_virt_addr {
 	struct page **pages;
 	int pages_order;
 	int page_count;
+	/* Actual effective size */
 	unsigned long size;
 
 	/* The offset of the first page of the virtual address */
@@ -226,6 +232,9 @@ struct rga_internal_buffer {
 
 	struct kref refcount;
 	struct rga_session *session;
+
+	/* The scheduler of the mapping */
+	struct rga_scheduler_t *scheduler;
 };
 
 struct rga_scheduler_t;
@@ -236,6 +245,12 @@ struct rga_session {
 	pid_t tgid;
 
 	char *pname;
+
+	ktime_t last_active;
+
+	bool release;
+	struct rw_semaphore release_rwsem;
+	struct kref refcount;
 };
 
 struct rga_job_buffer {
@@ -262,6 +277,17 @@ struct rga_job_buffer {
 	int page_count;
 };
 
+struct rga_job_timestamp {
+	ktime_t init;
+	ktime_t insert;
+	ktime_t hw_execute;
+	ktime_t hw_done;
+	ktime_t done;
+
+	/* The time only for hrtimer to calculate the load */
+	ktime_t hw_recode;
+};
+
 struct rga_job {
 	struct list_head head;
 
@@ -284,11 +310,8 @@ struct rga_job {
 	struct mm_struct *mm;
 
 	/* job time stamp */
-	ktime_t timestamp;
-	/* The time when the job is actually executed on the hardware */
-	ktime_t hw_running_time;
-	/* The time only for hrtimer to calculate the load */
-	ktime_t hw_recoder_time;
+	struct rga_job_timestamp timestamp;
+
 	unsigned int flags;
 	int request_id;
 	int priority;
@@ -348,6 +371,8 @@ struct rga_scheduler_t {
 	int core;
 
 	struct rga_timer timer;
+
+	struct rga_dma_buf_pool *cmd_buf_pool;
 };
 
 struct rga_request {
@@ -366,6 +391,7 @@ struct rga_request {
 	int32_t release_fence_fd;
 	struct dma_fence *release_fence;
 	spinlock_t fence_lock;
+	struct work_struct fence_work;
 
 	wait_queue_head_t finished_wq;
 
@@ -438,6 +464,9 @@ struct rga_drvdata_t {
 #ifdef CONFIG_ROCKCHIP_RGA_DEBUGGER
 	struct rga_debugger *debugger;
 #endif
+
+	bool shutdown;
+	struct rw_semaphore rwsem;
 };
 
 struct rga_irqs_data_t {
@@ -464,6 +493,9 @@ static inline void rga_write(int value, int offset, struct rga_scheduler_t *sche
 
 int rga_power_enable(struct rga_scheduler_t *scheduler);
 int rga_power_disable(struct rga_scheduler_t *scheduler);
+
+int rga_session_put(struct rga_session *session);
+void rga_session_get(struct rga_session *session);
 
 int rga_kernel_commit(struct rga_req *cmd);
 

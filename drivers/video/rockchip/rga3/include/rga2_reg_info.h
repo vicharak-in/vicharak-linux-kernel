@@ -6,7 +6,9 @@
 
 #define RGA2_SYS_REG_BASE			0x000
 #define RGA2_CSC_REG_BASE			0x060
+#define RGA2_OTHER_REG_BASE			0x090
 #define RGA2_CMD_REG_BASE			0x100
+#define RGA2_IOMMU_REG_BASE			0xf00
 
 /* sys reg */
 #define RGA2_SYS_CTRL				0x000
@@ -38,9 +40,14 @@
 #define RGA2_DST_CSC_22				0x088
 #define RGA2_DST_CSC_OFF2			0x08c
 
+/* back door0 */
+#define RGA2_BACKDOOR0				0x090
+
 /* osd read-back reg */
 #define RGA2_OSD_CUR_FLAGS0			0x090
 #define RGA2_OSD_CUR_FLAGS1			0x09c
+#define RGA2_FIXED_OSD_CUR_FLAGS0		0x440
+#define RGA2_FIXED_OSD_CUR_FLAGS1		0x444
 
 /* mode ctrl */
 #define RGA2_MODE_CTRL_OFFSET			0x000
@@ -61,6 +68,7 @@
 #define RGA2_OSD_CTRL1_OFFSET			0x024 // repeat
 #define RGA2_SRC_BG_COLOR_OFFSET		0x028
 #define RGA2_OSD_COLOR0_OFFSET			0x028 // repeat
+#define RGA2_GAUSS_COE_OFFSET			0x028 // repeat
 #define RGA2_SRC_FG_COLOR_OFFSET		0x02c
 #define RGA2_OSD_COLOR1_OFFSET			0x02c // repeat
 #define RGA2_SRC_TR_COLOR0_OFFSET		0x030
@@ -93,6 +101,7 @@
 #define RGA2_OSD_INVERTSION_CAL1_OFFSET		0x064 // repeat
 #define RGA2_MASK_BASE_OFFSET			0x068
 #define RGA2_MMU_CTRL1_OFFSET			0x06c
+#define RGA2_UV_VIR_INFO			0x06c // repeat
 #define RGA2_MMU_SRC_BASE_OFFSET		0x070
 #define RGA2_PREFETCH_ADDR_TH_OFFSET		0x070 // repeat
 #define RGA2_MMU_SRC1_BASE_OFFSET		0x074
@@ -100,8 +109,9 @@
 #define RGA2_MMU_ELS_BASE_OFFSET		0x07c
 
 /*RGA_SYS*/
-#define m_RGA2_SYS_CTRL_SRC0YUV420SP_RD_OPT_DIS		(0x1 << 12)
-#define m_RGA2_SYS_CTRL_DST_WR_OPT_DIS			(0x1 << 11)
+#define m_RGA2_SYS_CTRL_SRC0YUV420SP_RD_OPT_DIS		(0x1 << 12) /* moved to RGA_BACKDOOR0 since RV1126B */
+#define m_RGA2_SYS_CTRL_DST_WR_OPT_DIS			(0x1 << 11) /* moved to RGA_BACKDOOR0 since RV1126B */
+#define m_RGA2_MASTER_CMD_BYPASS_EN			(0x1 << 11) /* after RV1126B */
 #define m_RGA2_SYS_CTRL_CMD_CONTINUE_P			(0x1 << 10)
 #define m_RGA2_SYS_CTRL_HOLD_MODE_EN			(0x1 << 9)
 #define m_RGA2_SYS_CTRL_RST_HANDSAVE_P			(0x1 << 7)
@@ -131,6 +141,14 @@
 #define m_RGA2_STATUS1_SW_RGA_STA			(0x1 << 0)
 
 /*RGA_INT*/
+#define m_RGA2_INT_FBCIN_DEC_ERROR_CLEAR		(1 << 24)
+#define m_RGA2_INT_FBCIN_DEC_ERROR_EN			(1 << 23)
+#define m_RGA2_INT_FBCIN_DEC_ERROR			(1 << 22)
+#define m_RGA2_INT_PREFETCH_TH_INTR			(1 << 21)
+#define m_RGA2_INT_PRE_TH_CLEAR				(1 << 20)
+#define m_RGA2_INT_SCL_ERROR_CLEAR			(1 << 19)
+#define m_RGA2_INT_SCL_ERROR_EN				(1 << 18)
+#define m_RGA2_INT_SCL_ERROR_INTR			(1 << 17)
 #define m_RGA2_INT_LINE_WR_CLEAR			(1 << 16)
 #define m_RGA2_INT_LINE_RD_CLEAR			(1 << 15)
 #define m_RGA2_INT_LINE_WR_EN				(1 << 14)
@@ -152,17 +170,23 @@
 #define m_RGA2_INT_ERROR_FLAG_MASK \
 	( \
 		m_RGA2_INT_MMU_INT_FLAG | \
-		m_RGA2_INT_ERROR_INT_FLAG \
+		m_RGA2_INT_ERROR_INT_FLAG | \
+		m_RGA2_INT_SCL_ERROR_INTR | \
+		m_RGA2_INT_FBCIN_DEC_ERROR \
 	)
 #define m_RGA2_INT_ERROR_CLEAR_MASK \
 	( \
-	m_RGA2_INT_MMU_INT_CLEAR | \
-	m_RGA2_INT_ERROR_INT_CLEAR \
+		m_RGA2_INT_MMU_INT_CLEAR | \
+		m_RGA2_INT_ERROR_INT_CLEAR | \
+		m_RGA2_INT_SCL_ERROR_CLEAR | \
+		m_RGA2_INT_FBCIN_DEC_ERROR_CLEAR \
 )
 #define m_RGA2_INT_ERROR_ENABLE_MASK \
 	( \
 		m_RGA2_INT_MMU_INT_EN | \
-		m_RGA2_INT_ERROR_INT_EN \
+		m_RGA2_INT_ERROR_INT_EN | \
+		m_RGA2_INT_SCL_ERROR_EN | \
+		m_RGA2_INT_FBCIN_DEC_ERROR_EN \
 	)
 
 #define s_RGA2_INT_LINE_WR_CLEAR(x)			((x & 0x1) << 16)
@@ -196,6 +220,17 @@
 #define s_RGA2_WRITE_LINE_SW_INTR_LINE_WR_START(x)	((x & 0x1fff) << 0)
 #define s_RGA2_WRITE_LINE_SW_INTR_LINE_WR_STEP(x)	((x & 0x1fff) << 16)
 
+/* RGA BACKDOOR0 */
+#define m_RGA2_HSDBIL_VSP_FIX_DIS			(0x1 << 0)
+#define m_RGA2_HSP_LEFT_COPY_DIS			(0x1 << 1)
+#define m_RGA2_AXI_WR128_DIS				(0x1 << 2)
+#define m_RGA2_TABLE_PRE_FETCH_DIS			(0X1 << 3)
+#define m_RGA2_FBCIN_BSP_DIS				(0X1 << 4)
+#define m_RGA2_SRC1_RGB888_FIX_DIS			(0X1 << 5)
+#define m_RGA2_SRC0_YUV420SP_RD_OPT_DIS			(0X1 << 6)
+#define m_RGA2_DST_WR_OPT_DIS				(0X1 << 7)
+#define m_RGA2_OUTSTANDING_CFG_DIS			(0X1 << 8)
+
 /* RGA_MODE_CTRL */
 #define m_RGA2_MODE_CTRL_SW_RENDER_MODE			(0x7 << 0)
 #define m_RGA2_MODE_CTRL_SW_BITBLT_MODE			(0x1 << 3)
@@ -208,11 +243,13 @@
 #define m_RGA2_MODE_CTRL_SW_YIN_YOUT_EN			(0x1<<10)
 #define m_RGA2_MODE_CTRL_SW_TILE4x4_IN_EN		(0x1 << 12)
 #define m_RGA2_MODE_CTRL_SW_TILE4x4_OUT_EN		(0x1 << 13)
+#define m_RGA2_MODE_CTRL_SW_TABLE_PRE_FETCH_MODE	(0x3 << 14)
 #define m_RGA2_MODE_CTRL_SW_FBC_IN_EN			(0x1 << 16)
-#define m_RGA2_MODE_CTRL_SW_FBC_BSP_DIS			(0x1 << 18)
-#define m_RGA2_MODE_CTRL_SW_TABLE_PRE_FETCH_DIS		(0x1 << 19)
-#define m_RGA2_MODE_CTRL_SW_AXI_WR128_DIS		(0x1 << 20)
-#define m_RGA2_MODE_CTRL_SW_HSP_LEFT_COPY_DIS		(0x1 << 21)
+#define m_RGA2_MODE_CTRL_SW_SRC_GAUSS_EN		(0x1 << 17)
+#define m_RGA2_MODE_CTRL_SW_FBC_BSP_DIS			(0x1 << 18) /* moved to RGA_BACKDOOR0 since RV1126B */
+#define m_RGA2_MODE_CTRL_SW_TABLE_PRE_FETCH_DIS		(0x1 << 19) /* moved to RGA_BACKDOOR0 since RV1126B */
+#define m_RGA2_MODE_CTRL_SW_AXI_WR128_DIS		(0x1 << 20) /* moved to RGA_BACKDOOR0 since RV1126B */
+#define m_RGA2_MODE_CTRL_SW_HSP_LEFT_COPY_DIS		(0x1 << 21) /* moved to RGA_BACKDOOR0 since RV1126B */
 
 #define s_RGA2_MODE_CTRL_SW_RENDER_MODE(x)		((x & 0x7) << 0)
 #define s_RGA2_MODE_CTRL_SW_BITBLT_MODE(x)		((x & 0x1) << 3)
@@ -225,7 +262,9 @@
 #define s_RGA2_MODE_CTRL_SW_YIN_YOUT_EN(x)		((x & 0x1) << 10)
 #define s_RGA2_MODE_CTRL_SW_TILE4x4_IN_EN(x)		((x & 0x1) << 12)
 #define s_RGA2_MODE_CTRL_SW_TILE4x4_OUT_EN(x)		((x & 0x1) << 13)
+#define s_RGA2_MODE_CTRL_SW_TABLE_PRE_FETCH_MODE(x)	((x & 0x3) << 14)
 #define s_RGA2_MODE_CTRL_SW_FBC_IN_EN(x)		((x & 0x1) << 16)
+#define s_RGA2_MODE_CTRL_SW_SRC_GAUSS_EN(x)		((x & 0x1) << 17)
 #define s_RGA2_MODE_CTRL_SW_FBC_BSP_DIS(x)		((x & 0x1) << 18)
 #define s_RGA2_MODE_CTRL_SW_TABLE_PRE_FETCH_DIS(x)	((x & 0x1) << 19)
 #define s_RGA2_MODE_CTRL_SW_AXI_WR128_DIS(x)		((x & 0x1) << 20)
@@ -289,11 +328,15 @@
 
 
 /* RGA_SRC_ACT_INFO */
-#define m_RGA2_SRC_ACT_INFO_SW_SRC_ACT_WIDTH		(0x1fff << 0)
-#define m_RGA2_SRC_ACT_INFO_SW_SRC_ACT_HEIGHT		(0x1fff << 16)
+#define m_RGA2_SRC_ACT_INFO_SW_TILE4X4_IN_YOFF		(0x3 << 30)
+#define m_RGA2_SRC_ACT_INFO_SW_SRC_ACT_HEIGHT		(0x7ff << 16)
+#define m_RGA2_SRC_ACT_INFO_SW_TILE4X4_IN_XOFF		(0x3 << 14)
+#define m_RGA2_SRC_ACT_INFO_SW_SRC_ACT_WIDTH		(0x7ff << 0)
 
-#define s_RGA2_SRC_ACT_INFO_SW_SRC_ACT_WIDTH(x)		((x & 0x1fff) << 0)
-#define s_RGA2_SRC_ACT_INFO_SW_SRC_ACT_HEIGHT(x)	((x & 0x1fff) << 16)
+#define s_RGA2_SRC_ACT_INFO_SW_TILE4X4_IN_YOFF(x)	((x & 0x3) << 30)
+#define s_RGA2_SRC_ACT_INFO_SW_SRC_ACT_HEIGHT(x)	((x & 0x7ff) << 16)
+#define s_RGA2_SRC_ACT_INFO_SW_TILE4X4_IN_XOFF(x)	((x & 0x3) << 14)
+#define s_RGA2_SRC_ACT_INFO_SW_SRC_ACT_WIDTH(x)		((x & 0x7ff) << 0)
 
 /* RGA2_OSD_CTRL0 */
 #define m_RGA2_OSD_CTRL0_SW_OSD_MODE			(0x3 << 0)
@@ -311,6 +354,15 @@
 #define s_RGA2_OSD_CTRL0_SW_OSD_FLAGS_INDEX(x)		((x & 0x3ff) << 10)
 #define s_RGA2_OSD_CTRL0_SW_OSD_FIX_WIDTH(x)		((x & 0x3ff) << 20)
 #define s_RGA2_OSD_CTRL0_SW_OSD_2BPP_MODE(x)		((x & 0x1) << 30)
+
+/* RGA2_GAUSS_COE */
+#define m_RGA2_GAUSS_COE_SW_COE0			(0x3f << 0)
+#define m_RGA2_GAUSS_COE_SW_COE1			(0x3f << 8)
+#define m_RGA2_GAUSS_COE_SW_COE2			(0xff << 16)
+
+#define s_RGA2_GAUSS_COE_SW_COE0(x)			((x & 0x3f) << 0)
+#define s_RGA2_GAUSS_COE_SW_COE1(x)			((x & 0x3f) << 8)
+#define s_RGA2_GAUSS_COE_SW_COE2(x)			((x & 0xff) << 16)
 
 /* RGA2_OSD_CTRL1 */
 #define m_RGA2_OSD_CTRL1_SW_OSD_COLOR_SEL		(0x1 << 0)
@@ -468,6 +520,15 @@
 #define s_RGA2_MMU_CTRL1_SW_ELS_MMU_FLUSH(x)		((x & 0x1) << 13)
 
 #define RGA2_VSP_BICUBIC_LIMIT				1996
+#define RGA2_BILINEAR_PREC				12
+
+#define RGA2_IOMMU_PREFETCH_SHIFT			16
+#define RGA2_IOMMU_PREFETCH_MASK			0xffff
+#define RGA2_IOMMU_PREFETCH_ALIGN(x) \
+	(((x) + RGA2_IOMMU_PREFETCH_MASK) & ~RGA2_IOMMU_PREFETCH_MASK)
+#define RGA2_IOMMU_PREFETCH_ALIGN_DOWN(x)		((x) & ~RGA2_IOMMU_PREFETCH_MASK)
+#define RGA2_IOMMU_PREFETCH_THRESHOLD_MIN		(0x1U << RGA2_IOMMU_PREFETCH_SHIFT)
+#define RGA2_IOMMU_PREFETCH_THRESHOLD_MAX		(0xffffU << RGA2_IOMMU_PREFETCH_SHIFT)
 
 union rga2_color_ctrl {
 	uint32_t value;

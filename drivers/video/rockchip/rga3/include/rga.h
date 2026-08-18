@@ -69,6 +69,17 @@
 		RGA_MODE_X_MIRROR | \
 		RGA_MODE_Y_MIRROR)
 
+enum rga_csc_mode {
+	RGA_Y2R_BT601_LIMIT			= 0x1 << 0,
+	RGA_Y2R_BT601_FULL			= 0x2 << 0,
+	RGA_Y2R_BT709_LIMIT			= 0x3 << 0,
+	RGA_Y2R_MASK				= 0x3 << 0,
+	RGA_R2Y_BT601_LIMIT			= 0x2 << 0,
+	RGA_R2Y_BT601_FULL			= 0x1 << 0,
+	RGA_R2Y_BT709_LIMIT			= 0x3 << 0,
+	RGA_R2Y_MASK				= 0x3 << 0,
+};
+
 enum rga_memory_type {
 	RGA_DMA_BUFFER = 0,
 	RGA_VIRTUAL_ADDRESS,
@@ -159,6 +170,7 @@ enum {
 	RGA_OSD				= 0x1 << 11,
 	RGA_PRE_INTR			= 0x1 << 12,
 	RGA_FULL_CSC			= 0x1 << 13,
+	RGA_GAUSS			= 0x1 << 14,
 };
 
 enum rga_surf_format {
@@ -419,6 +431,11 @@ struct rga_csc_clip {
 struct rga_mosaic_info {
 	uint8_t enable;
 	uint8_t mode;
+};
+
+struct rga_gauss_config {
+	uint32_t size;
+	uint64_t coe_ptr;
 };
 
 /* MAX(min, (max - channel_value)) */
@@ -745,7 +762,9 @@ struct rga_req {
 
 	struct rga_rgba5551_alpha rgba5551_alpha;
 
-	uint8_t reservr[39];
+	struct rga_gauss_config gauss_config;
+
+	uint8_t reservr[51];
 };
 
 struct rga_alpha_config {
@@ -878,6 +897,8 @@ struct rga2_req {
 	struct rga_iommu_prefetch iommu_prefetch;
 
 	struct rga_rgba5551_alpha rgba5551_alpha;
+
+	struct rga_gauss_config gauss_config;
 };
 
 struct rga3_req {
@@ -902,7 +923,8 @@ struct rga3_req {
 	struct rga_alpha_config alpha_config;
 
 	/* for abb mode presever alpha. */
-	bool abb_alpha_pass;
+	bool bg_alpha_pass;
+	bool fg_alpha_pass;
 
 	u8 scale_bicu_mode;
 
@@ -919,11 +941,6 @@ struct rga3_req {
 	u8 fading_r_value;
 	u8 fading_g_value;
 	u8 fading_b_value;
-
-	/* win0 global alpha value		*/
-	u8 win0_a_global_val;
-	/* win1 global alpha value		*/
-	u8 win1_a_global_val;
 
 	u8 rop_mode;
 	u16 rop_code;
