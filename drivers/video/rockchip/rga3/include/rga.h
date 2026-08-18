@@ -756,9 +756,13 @@ struct rga_req {
 	uint8_t fg_global_alpha;
 	uint8_t bg_global_alpha;
 
-	struct {
-		uint32_t global_alpha_en:1;
-	} feature;
+	struct rga_feature feature;
+
+	struct rga_csc_clip full_csc_clip;
+
+	struct rga_rgba5551_alpha rgba5551_alpha;
+
+	struct rga_gauss_config gauss_config;
 
 	uint8_t reservr[51];
 };
