@@ -39,6 +39,36 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
+	vcc_2v5_ufs: vcc-2v5-ufs {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_2v5_ufs";
+		regulator-min-microvolt = <2500000>;
+		regulator-max-microvolt = <2500000>;
+		regulator-boot-on;
+		regulator-always-on;
+		vin-supply = <&vcc_sys>;
+	};
+
+	vcc1v2_ufs_vccq: regulator-vcc1v2-ufs-vccq {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		regulator-name = "vcc1v2_ufs_vccq";
+		regulator-boot-on;
+		regulator-always-on;
+		vin-supply = <&vcc_sys>;
+	};
+
+	vcc1v8_ufs_vccq2: regulator-vcc1v8-ufs-vccq2 {
+		compatible = "regulator-fixed";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-name = "vcc1v8_ufs_vccq2";
+		regulator-boot-on;
+		regulator-always-on;
+		vin-supply = <&vcc_1v8_s3>;
+	};
+
 	vcc_2v0_pldo_s3: vcc-2v0-pldo-s3 {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc_2v0_pldo_s3";
@@ -180,6 +210,16 @@
 	status = "okay";
 };
 
+&ufs {
+	status = "okay";
+	reset-gpios = <&gpio4 RK_PD0 GPIO_ACTIVE_LOW>;
+	vdd-hba-supply = <&vcc_2v5_ufs>;
+	vcc-supply = <&vcc_2v5_ufs>;
+	vccq-supply = <&vcc1v2_ufs_vccq>;
+	vccq2-supply = <&vcc1v8_ufs_vccq2>;
+	pinctrl-0 = <&ufs_refclk &ufs_rst>;
+};
+
 &sdmmc {
 	max-frequency = <200000000>;
 	no-sdio;
@@ -197,6 +237,16 @@
 	usb {
 		usb_host_pwren: usb-host-pwren {
 			rockchip,pins = <2 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	ufs {
+		ufs_refclk: ufs-refclk {
+			rockchip,pins = <4 RK_PD1 1 &pcfg_pull_none>;
+		};
+
+		ufs_rst: ufs-rst {
+			rockchip,pins = <4 RK_PD0 0 &pcfg_pull_down>;
 		};
 	};
 
