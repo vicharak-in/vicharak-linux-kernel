@@ -132,6 +132,30 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
+	vcc3v3_pcie0: vcc3v3-pcie0 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_pcie0";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		gpios = <&gpio4 RK_PA5 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
+		regulator-always-on;
+		vin-supply = <&vcc5v0_device>;
+	};
+
+	vcc3v3_pcie1: vcc3v3-pcie1 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_pcie1";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		gpios = <&gpio4 RK_PB0 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
+		regulator-always-on;
+		vin-supply = <&vcc5v0_device>;
+	};
+
 };
 
 &cpu_l0 {
@@ -233,6 +257,33 @@
 	status = "okay";
 };
 
+&combphy0_ps {
+	rockchip,pipe-grf = <&php_grf>;
+	status = "okay";
+};
+
+&combphy1_psu {
+	status = "okay";
+	rockchip,pipe-grf = <&php_grf>;
+};
+
+&pcie0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_rst &pcie0m0_pins &pcie0_wake>;
+	reset-gpios = <&gpio2 RK_PC4 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie0>;
+	status = "okay";
+};
+
+&pcie1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_rst &pcie1m0_pins &pcie1_wake>;
+	reset-gpios = <&gpio2 RK_PB1 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie1>;
+	rockchip,skip-scan-in-resume;
+	status = "okay";
+};
+
 &pinctrl {
 	usb {
 		usb_host_pwren: usb-host-pwren {
@@ -247,6 +298,40 @@
 
 		ufs_rst: ufs-rst {
 			rockchip,pins = <4 RK_PD0 0 &pcfg_pull_down>;
+		};
+	};
+
+	pcie0 {
+		pcie0_rst: pcie0-rst {
+			rockchip,pins =
+				<2 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		pcie0_clkreq: pcie0-clkreq {
+			rockchip,pins =
+				<2 RK_PB2 4 &pcfg_pull_none>;
+		};
+
+		pcie0_wake: pcie0-wake {
+			rockchip,pins =
+				<2 RK_PC3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	pcie1 {
+		pcie1_rst: pcie1-rst {
+			rockchip,pins =
+				<2 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		pcie1_clkreq: pcie1-clkreq {
+			rockchip,pins =
+				<2 RK_PB3 4 &pcfg_pull_none>;
+		};
+
+		pcie1_wake: pcie1-wake {
+			rockchip,pins =
+				<2 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
