@@ -186,6 +186,11 @@
 	cpu-supply = <&vdd_cpu_big_s0>;
 };
 
+&gpu {
+	mali-supply = <&vdd_gpu_s0>;
+	status = "okay";
+};
+
 &rockchip_suspend {
 	status = "okay";
 	rockchip,sleep-debug-en = <1>;
