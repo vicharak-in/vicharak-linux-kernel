@@ -132,6 +132,18 @@
 		regulator-max-microvolt = <5000000>;
 	};
 
+	virtual_antenna: virtual-antenna {
+		status = "okay";
+		compatible = "regulator-fixed";
+		regulator-name = "virtual_antenna";
+		regulator-always-on;
+		regulator-boot-on;
+		enable-active-low;
+		gpio = <&gpio2 RK_PC2 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&virtual_ant>;
+	};
+
 	vcc3v3_pcie0: vcc3v3-pcie0 {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc3v3_pcie0";
@@ -156,6 +168,16 @@
 		vin-supply = <&vcc5v0_device>;
 	};
 
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		clocks = <&hym8563>;
+		clock-names = "ext_clock";
+		pinctrl-names = "default";
+		pinctrl-0 = <&sdio_reset_wifi>;
+		reset-gpios = <&gpio1 RK_PD5 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+
 	hdmi_sound: hdmi-sound {
 		compatible = "rockchip,hdmi";
 		rockchip,mclk-fs = <128>;
@@ -176,6 +198,15 @@
 		pinctrl-0 = <&usb_otg0_pwren>;
 	};
 
+	wireless_wlan: wireless-wlan {
+		compatible = "wlan-platdata";
+		wifi_chip_type = "rtl8852bs";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_host_wake_irq>, <&wifi_poweren_gpio>;
+		WIFI,host_wake_irq = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
+		WIFI,poweren_gpio = <&gpio1 RK_PC6 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
 };
 
 &cpu_l0 {
@@ -256,6 +287,24 @@
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
 	full-pwr-cycle-in-suspend;
+	status = "okay";
+};
+
+&sdio {
+	max-frequency = <150000000>;
+	no-sd;
+	no-mmc;
+	bus-width = <4>;
+	disable-wp;
+	cap-sd-highspeed;
+	cap-sdio-irq;
+	keep-power-in-suspend;
+	mmc-pwrseq = <&sdio_pwrseq>;
+	non-removable;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc1m0_bus4 &sdmmc1m0_clk &sdmmc1m0_cmd>;
+	vmmc-supply = <&vcc_3v3_s3>;
+	vqmmc-supply = <&vcc_1v8_s3>;
 	status = "okay";
 };
 
@@ -553,6 +602,12 @@
 		};
 	};
 
+	antenna {
+		virtual_ant: virtual-ant {
+			rockchip,pins = <2 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
 	ufs {
 		ufs_refclk: ufs-refclk {
 			rockchip,pins = <4 RK_PD1 1 &pcfg_pull_none>;
@@ -600,6 +655,23 @@
 		pcie1_wake: pcie1-wake {
 			rockchip,pins =
 				<2 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	wireless-wlan {
+		sdio_reset_wifi: sdio-reset-wifi {
+			rockchip,pins =
+				<1 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		wifi_host_wake_irq: wifi-host-wake-irq {
+			rockchip,pins =
+				<0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		wifi_poweren_gpio: wifi-poweren-gpio {
+			rockchip,pins =
+				<1 RK_PC6 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
