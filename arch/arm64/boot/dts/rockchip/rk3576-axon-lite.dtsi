@@ -198,6 +198,21 @@
 		pinctrl-0 = <&usb_otg0_pwren>;
 	};
 
+	wireless_bluetooth: wireless-bluetooth {
+		compatible = "bluetooth-platdata";
+		clocks = <&hym8563>;
+		clock-names = "ext_clock";
+		uart_rts_gpios = <&gpio1 RK_PC2 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default", "rts_gpio";
+		pinctrl-0 = <&uart4m1_rtsn>, <&bt_reset_gpio>, <&bt_wake_gpio>,
+			<&bt_irq_gpio>;
+		pinctrl-1 = <&uart4_gpios>;
+		BT,wake_host_irq = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
+		BT,wake_gpio = <&gpio0 RK_PB2 GPIO_ACTIVE_HIGH>;
+		BT,reset_gpio = <&gpio1 RK_PC7 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
 	wireless_wlan: wireless-wlan {
 		compatible = "wlan-platdata";
 		wifi_chip_type = "rtl8852bs";
@@ -587,6 +602,12 @@
 	connect = <&vp2_out_dp0>;
 };
 
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4m1_xfer &uart4m1_ctsn>;
+	status = "okay";
+};
+
 &pinctrl {
 	usb {
 		usb_host_pwren: usb-host-pwren {
@@ -655,6 +676,28 @@
 		pcie1_wake: pcie1-wake {
 			rockchip,pins =
 				<2 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	wireless-bluetooth {
+		uart4_gpios: uart4-gpios {
+			rockchip,pins =
+				<1 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		bt_reset_gpio: bt-reset-gpio {
+			rockchip,pins =
+				<1 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		bt_wake_gpio: bt-wake-gpio {
+			rockchip,pins =
+				<0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		bt_irq_gpio: bt-irq-gpio {
+			rockchip,pins =
+				<0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
