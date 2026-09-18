@@ -297,6 +297,24 @@ config BOARD_VICHARAK_AXON_CM
 	  This enables support for Vicharak Axon Compute Module, System-on-Module (SoM)
 	  based on the Rockchip RK3588 octa-core SoC.
 
+config BOARD_VICHARAK_AXON_CM_EVB1
+	bool "Vicharak Axon CM based Evolution Board 1"
+	select ARCH_ROCKCHIP
+	select ARCH_VICHARAK
+	select BOARD_VICHARAK_AXON_CM
+	help
+	  This enables support for Vicharak Axon Compute Module Evolution Board 1.
+	  It supports B Key Connector on PCIe, HDMI, Audio Jack, CAN, Ethernet etc.
+
+config BOARD_VICHARAK_AXON_CM_EVB2
+	bool "Vicharak Axon CM based Evolution Board 2"
+	select ARCH_ROCKCHIP
+	select ARCH_VICHARAK
+	select BOARD_VICHARAK_AXON_CM
+	help
+	  This enables support for Vicharak Axon Compute Module Evolution Board 2.
+	  It supports multiple MIPI CSI and 1x DSI, HDMI, 2x Type-C/DP, Ethernet etc.
+
 endmenu
 
 config ARCH_SEATTLE
