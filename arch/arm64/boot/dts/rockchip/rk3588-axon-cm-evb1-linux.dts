@@ -29,7 +29,7 @@
 
 / {
 	model = "Vicharak RK3588 AXON CM EVB1 V0.1 R0.2 LINUX";
-	compatible = "vicharak,rk3588-axon-cm", "rockchip,rk3588";
+	compatible = "vicharak,rk3588-axon-cm-evb1", "rockchip,rk3588";
 
 	/delete-node/ chosen;
 	chosen: chosen {
