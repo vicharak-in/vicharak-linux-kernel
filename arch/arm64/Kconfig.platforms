@@ -315,6 +315,14 @@ config BOARD_VICHARAK_AXON_CM_EVB2
 	  This enables support for Vicharak Axon Compute Module Evolution Board 2.
 	  It supports multiple MIPI CSI and 1x DSI, HDMI, 2x Type-C/DP, Ethernet etc.
 
+config BOARD_VICHARAK_AXON_LITE
+	bool "Vicharak Axon Lite Board based on Rockchip RK3576"
+	select ARCH_ROCKCHIP
+	select ARCH_VICHARAK
+	help
+	  This enables support for Vicharak Axon Board which is a single board
+	  computer based on high performance Rockchip RK3576 SoC.
+
 endmenu
 
 config ARCH_SEATTLE

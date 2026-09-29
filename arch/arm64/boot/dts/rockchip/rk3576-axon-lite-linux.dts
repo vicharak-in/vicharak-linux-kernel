@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2023 Vicharak Computers LLP
+ */
+
+/dts-v1/;
+
+#include "rk3576-axon-lite.dtsi"
+#include "rk3576-linux.dtsi"
+
+/ {
+	model = "Vicharak RK3576 AXON LITE VO.2 LINUX";
+	compatible = "vicharak,rk3576-axon-lite", "rockchip,rk3576";
+};
