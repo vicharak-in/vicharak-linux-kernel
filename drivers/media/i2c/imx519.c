@@ -1333,6 +1333,27 @@ static int imx519_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int imx519_enum_frame_interval(struct v4l2_subdev *sd,
+				      struct v4l2_subdev_state *sd_state,
+				      struct v4l2_subdev_frame_interval_enum *fie)
+{
+	struct imx519 *imx519 = to_imx519(sd);
+
+	if (fie->index >= ARRAY_SIZE(supported_modes_10bit))
+		return -EINVAL;
+
+	mutex_lock(&imx519->mutex);
+	fie->code = imx519_get_format_code(imx519);
+	mutex_unlock(&imx519->mutex);
+
+	fie->width = supported_modes_10bit[fie->index].width;
+	fie->height = supported_modes_10bit[fie->index].height;
+	fie->interval = supported_modes_10bit[fie->index].timeperframe_min;
+	fie->reserved[0] = NO_HDR;
+
+	return 0;
+}
+
 static int imx519_get_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 				  struct v4l2_mbus_config *config)
 {
@@ -1695,11 +1716,22 @@ static void imx519_get_module_inf(struct imx519 *imx519,
 static long imx519_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	struct imx519 *imx519 = to_imx519(sd);
+	struct rkmodule_hdr_cfg *hdr;
 	long ret = 0;
 
 	switch (cmd) {
 	case RKMODULE_GET_MODULE_INFO:
 		imx519_get_module_inf(imx519, (struct rkmodule_inf *)arg);
+		break;
+	case RKMODULE_GET_HDR_CFG:
+		hdr = (struct rkmodule_hdr_cfg *)arg;
+		hdr->esp.mode = HDR_NORMAL_VC;
+		hdr->hdr_mode = NO_HDR;
+		break;
+	case RKMODULE_SET_HDR_CFG:
+		hdr = (struct rkmodule_hdr_cfg *)arg;
+		if (hdr->hdr_mode != NO_HDR)
+			ret = -EINVAL;
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -1716,6 +1748,7 @@ static long imx519_compat_ioctl32(struct v4l2_subdev *sd,
 	void __user *up = compat_ptr(arg);
 	struct rkmodule_inf *inf;
 	struct rkmodule_awb_cfg *cfg;
+	struct rkmodule_hdr_cfg *hdr;
 	long ret;
 
 	switch (cmd) {
@@ -1742,6 +1775,33 @@ static long imx519_compat_ioctl32(struct v4l2_subdev *sd,
 		if (!ret)
 			ret = imx519_ioctl(sd, cmd, cfg);
 		kfree(cfg);
+		break;
+	case RKMODULE_GET_HDR_CFG:
+		hdr = kzalloc(sizeof(*hdr), GFP_KERNEL);
+		if (!hdr) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = imx519_ioctl(sd, cmd, hdr);
+		if (!ret) {
+			if (copy_to_user(up, hdr, sizeof(*hdr)))
+				ret = -EFAULT;
+		}
+		kfree(hdr);
+		break;
+	case RKMODULE_SET_HDR_CFG:
+		hdr = kzalloc(sizeof(*hdr), GFP_KERNEL);
+		if (!hdr) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		if (copy_from_user(hdr, up, sizeof(*hdr)))
+			ret = -EFAULT;
+		else
+			ret = imx519_ioctl(sd, cmd, hdr);
+		kfree(hdr);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -1843,6 +1903,7 @@ static const struct v4l2_subdev_pad_ops imx519_pad_ops = {
 	.set_fmt = imx519_set_pad_format,
 	.get_selection = imx519_get_selection,
 	.enum_frame_size = imx519_enum_frame_size,
+	.enum_frame_interval = imx519_enum_frame_interval,
 	.get_mbus_config = imx519_get_mbus_config,
 };
 
