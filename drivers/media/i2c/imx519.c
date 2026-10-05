@@ -1532,10 +1532,22 @@ static int imx519_get_selection(struct v4l2_subdev *sd,
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP_BOUNDS:
+		struct imx519 *imx519 = to_imx519(sd);
+
 		sel->r.left = 0;
 		sel->r.top = 0;
-		sel->r.width = IMX519_PIXEL_ARRAY_WIDTH;
-		sel->r.height = IMX519_PIXEL_ARRAY_HEIGHT;
+		if (sel->which == V4L2_SUBDEV_FORMAT_TRY) {
+			const struct v4l2_mbus_framefmt *try_fmt =
+				v4l2_subdev_get_try_format(sd, sd_state, sel->pad);
+
+			sel->r.width = try_fmt->width;
+			sel->r.height = try_fmt->height;
+		} else {
+			mutex_lock(&imx519->mutex);
+			sel->r.width = imx519->mode->width;
+			sel->r.height = imx519->mode->height;
+			mutex_unlock(&imx519->mutex);
+		}
 
 		return 0;
 	}
